@@ -1,180 +1,90 @@
 """
 ---------------------------------------------------------
-Annotation Service
+Density Service
 ---------------------------------------------------------
-Author : Member 1
+Author : Nisha
+
+Purpose
+-------
+Calculates crowd density based on the number of detected
+people and the frame area.
 
 Responsibilities
 ----------------
-✔ Draw bounding boxes
-✔ Draw confidence scores
-✔ Draw people count
-✔ Draw density
-✔ Draw FPS
-✔ Draw timestamp
-✔ Draw camera name
+✔ Count detected people
+✔ Calculate density score
+✔ Classify density level
+✔ Return structured results
 
-This service NEVER performs AI detection.
+This service DOES NOT perform object detection.
+It only analyzes detection results.
 ---------------------------------------------------------
 """
 
-import cv2
-from datetime import datetime
 
-
-class AnnotationService:
+class DensityService:
+    """
+    Service responsible for estimating crowd density.
+    """
 
     def __init__(self):
-        self.green = (0, 255, 0)
-        self.red = (0, 0, 255)
-        self.yellow = (0, 255, 255)
-        self.white = (255, 255, 255)
-        self.black = (0, 0, 0)
-
-        self.font = cv2.FONT_HERSHEY_SIMPLEX
-
-    #########################################################
-
-    def annotate_frame(
-        self,
-        frame,
-        detections,
-        people_count,
-        density_level,
-        density_score,
-        fps=0,
-        camera_name="CAM-01"
-    ):
         """
-        Draw all overlays on the frame.
+        Initialize density thresholds.
         """
 
-        annotated = frame.copy()
+        self.low_threshold = 0.10
+        self.medium_threshold = 0.30
 
-        # ---------------------------------------------------
-        # Draw Bounding Boxes
-        # ---------------------------------------------------
+    ##########################################################
 
-        for person in detections:
+    def calculate_density(self, detections, frame_shape):
+        """
+        Calculate crowd density.
 
-            x1, y1, x2, y2 = person["bbox"]
+        Parameters
+        ----------
+        detections : list
+            List of detected people.
 
-            confidence = person["confidence"]
+        frame_shape : tuple
+            Frame shape from OpenCV image.
 
-            cv2.rectangle(
-                annotated,
-                (x1, y1),
-                (x2, y2),
-                self.green,
-                2
-            )
+        Returns
+        -------
+        dict
+            Density information.
+        """
 
-            label = f"Person {confidence:.2f}"
+        height, width = frame_shape[:2]
 
-            cv2.putText(
-                annotated,
-                label,
-                (x1, y1 - 10),
-                self.font,
-                0.5,
-                self.green,
-                2
-            )
+        frame_area = width * height
 
-        # ---------------------------------------------------
-        # Dashboard Panel
-        # ---------------------------------------------------
+        people_count = len(detections)
 
-        cv2.rectangle(
-            annotated,
-            (10, 10),
-            (360, 180),
-            self.black,
-            -1
-        )
+        if frame_area == 0:
+            density_score = 0.0
+        else:
+            density_score = people_count / frame_area
 
-        cv2.rectangle(
-            annotated,
-            (10, 10),
-            (360, 180),
-            self.green,
-            2
-        )
+        density_level = self._classify_density(density_score)
 
-        cv2.putText(
-            annotated,
-            "EARLY STAMPEDE RISK DETECTION",
-            (20, 35),
-            self.font,
-            0.6,
-            self.green,
-            2
-        )
+        return {
+            "people_count": people_count,
+            "density_score": density_score,
+            "density_level": density_level
+        }
 
-        cv2.putText(
-            annotated,
-            f"Camera : {camera_name}",
-            (20, 65),
-            self.font,
-            0.5,
-            self.white,
-            1
-        )
+    ##########################################################
 
-        cv2.putText(
-            annotated,
-            f"People : {people_count}",
-            (20, 90),
-            self.font,
-            0.6,
-            self.yellow,
-            2
-        )
+    def _classify_density(self, density_score):
+        """
+        Convert density score into a human-readable label.
+        """
 
-        cv2.putText(
-            annotated,
-            f"Density : {density_level}",
-            (20, 115),
-            self.font,
-            0.6,
-            self.yellow,
-            2
-        )
+        if density_score < self.low_threshold:
+            return "LOW"
 
-        cv2.putText(
-            annotated,
-            f"Density Score : {density_score:.6f}",
-            (20, 140),
-            self.font,
-            0.5,
-            self.white,
-            1
-        )
+        elif density_score < self.medium_threshold:
+            return "MEDIUM"
 
-        cv2.putText(
-            annotated,
-            f"FPS : {fps:.2f}",
-            (20, 165),
-            self.font,
-            0.5,
-            self.white,
-            1
-        )
-
-        # ---------------------------------------------------
-        # Timestamp
-        # ---------------------------------------------------
-
-        timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
-        cv2.putText(
-            annotated,
-            timestamp,
-            (650, 30),
-            self.font,
-            0.6,
-            self.green,
-            2
-        )
-
-        return annotated
+        return "HIGH"
