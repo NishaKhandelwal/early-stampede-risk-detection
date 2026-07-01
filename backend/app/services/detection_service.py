@@ -1,66 +1,105 @@
-import cv2
-import numpy as np
+import time
 from ultralytics import YOLO
 
+
 class DetectionService:
-    def __init__(self, model_path="yolov8n.pt"):
+
+    def __init__(
+        self,
+        model_path="yolov8n.pt",
+        confidence_threshold=0.50
+    ):
         """
-        Initializes the YOLOv8 model for person detection.
+        Initialize YOLO model.
+
+        Parameters
+        ----------
+        model_path : str
+            Path to pretrained YOLO model.
+
+        confidence_threshold : float
+            Minimum confidence to accept detections.
         """
-        # This will download the yolov8n.pt weight automatically on first run
+
         self.model = YOLO(model_path)
-        # Class index 0 corresponds to 'person' in the COCO dataset
-        self.person_class_id = 0 
 
-    def detect_people(self, frame: np.ndarray):
-        """
-        Processes a single frame to detect people.
-        Returns:
-            count (int): Number of people detected
-            boxes (list): Bounding boxes [[x1, y1, x2, y2], ...]
-            annotated_frame (np.ndarray): Frame with bounding boxes drawn
-        """
-        if frame is None:
-            return 0, [], frame
+        # COCO Dataset
+        self.PERSON_CLASS = 0
 
-        # Run inference (stream=True optimizes memory allocation for loops)
+        self.confidence_threshold = confidence_threshold
+
+  
+
+    def detect_people(self, frame):
+
+        """
+        Detect persons in a frame.
+
+        Parameters
+        ----------
+        frame : ndarray
+
+        Returns
+        -------
+        dict
+
+        {
+            people_count,
+            detections,
+            inference_time,
+            frame_width,
+            frame_height
+        }
+        """
+
+        start_time = time.time()
+
         results = self.model(frame, verbose=False)
-        
-        count = 0
-        boxes = []
-        annotated_frame = frame.copy()
+
+        detections = []
 
         for result in results:
+
             for box in result.boxes:
-                # Filter only 'person' class
-                if int(box.cls[0]) == self.person_class_id:
-                    count += 1
-                    # Extract coordinates as integers
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    confidence = float(box.conf[0])
-                    boxes.append([x1, y1, x2, y2])
 
-                    # Draw bounding box on the frame
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(
-                        annotated_frame, 
-                        f"Person: {confidence:.2f}", 
-                        (x1, max(15, y1 - 10)), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 
-                        0.5, 
-                        (0, 255, 0), 
-                        2
-                    )
+                class_id = int(box.cls[0])
 
-        # Draw total count directly onto the frame overhead
-        cv2.putText(
-            annotated_frame, 
-            f"Live Count: {count}", 
-            (20, 40), 
-            cv2.FONT_HERSHEY_SIMPLEX, 
-            1.0, 
-            (0, 0, 255), 
-            3
-        )
+                confidence = float(box.conf[0])
 
-        return count, boxes, annotated_frame
+                # Ignore non-person classes
+                if class_id != self.PERSON_CLASS:
+                    continue
+
+                # Ignore weak detections
+                if confidence < self.confidence_threshold:
+                    continue
+
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                detections.append({
+
+                    "bbox": [x1, y1, x2, y2],
+
+                    "confidence": round(confidence, 2)
+
+                })
+
+        inference_time = round(time.time() - start_time, 3)
+
+        height, width = frame.shape[:2]
+
+        output = {
+
+            "people_count": len(detections),
+
+            "detections": detections,
+
+            "frame_width": width,
+
+            "frame_height": height,
+
+            "inference_time": inference_time
+
+        }
+
+        return output
