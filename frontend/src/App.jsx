@@ -5,19 +5,22 @@ import Dashboard from './pages/Dashboard';
 import LiveMonitoring from './pages/LiveMonitoring';
 import Alerts from './pages/Alerts';
 import Analytics from './pages/Analytics';
-
+import { healthCheck } from "./services/api";//temporary addition
 function App() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth <= 768) {
-        setIsSidebarExpanded(false);
-      }
+    const testBackend = async () => {
+        try {
+            const data = await healthCheck();
+            console.log("Backend Connected:", data);
+        } catch (err) {
+            console.error("Backend Not Reachable", err);
+        }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
+    testBackend();
+}, []);
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded);
