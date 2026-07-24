@@ -41,7 +41,7 @@ MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200 MB upload limit
 
 # When processing an uploaded video, we don't need to run YOLO on
 # EVERY frame (too slow). Process every Nth frame instead.
-FRAME_SAMPLE_RATE = 5
+FRAME_SAMPLE_RATE = 15
 
 # ---------------------------------------------------------------
 # Risk thresholds are owned by risk_service.py / density_service.py /

@@ -1,4 +1,5 @@
 import time
+import cv2
 from ultralytics import YOLO
 
 
@@ -53,7 +54,7 @@ class DetectionService:
         """
 
         start_time = time.time()
-
+        frame = cv2.resize(frame, (640, 640))
         results = self.model(frame, verbose=False)
 
         detections = []

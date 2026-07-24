@@ -12,6 +12,7 @@ Endpoints:
 
 import os
 import cv2
+import time
 from flask import Blueprint, request, jsonify
 
 from app.utils.config import (
@@ -46,6 +47,7 @@ def upload_video():
 
     saved_path = save_uploaded_file(file, file.filename)
     logger.info(f"Video saved to {saved_path}")
+    start_time = time.time()
 
     cap = cv2.VideoCapture(saved_path)
     if not cap.isOpened():
@@ -70,6 +72,8 @@ def upload_video():
 
         result = run_pipeline_on_frame(frame, camera_id=camera_id)
         processed_count += 1
+        if processed_count % 20 == 0:
+            print(f"Processed {processed_count} sampled frames...")
         people_counts.append(result["people_count"])
         last_result = result
 
@@ -102,6 +106,7 @@ def upload_video():
     os.remove(saved_path)  # cleanup - don't keep uploaded videos around
 
     if processed_count == 0:
+        print(f"Total processing time: {time.time()-start_time:.2f} sec")
         return jsonify({"error": "No frames could be processed from this video"}), 400
 
     summary = {

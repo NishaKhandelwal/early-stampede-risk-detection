@@ -1,17 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X } from 'lucide-react';
 
+import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSector, setAlertSector] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
+  const [analysisResult,setAnalysisResult]=useState(null);
   const audioCtxRef = useRef(null);
 
-  const handleVideoUpload = (e) => {
+  const handleVideoUpload = async (e) => {
+
     const file = e.target.files[0];
-    if (file) {
+
+      if (!file) return;
+
+
       setVideoSource(URL.createObjectURL(file));
-    }
+
+
+      try {
+
+          const result = await uploadVideo(file);
+
+          console.log(
+              "AI Result:",
+              result
+          );
+
+          setAnalysisResult(result);
+
+
+          if (
+              result.final_risk_level === "HIGH" ||
+              result.final_risk_level === "WARNING"
+          ) {
+              triggerAlert("B");
+          }
+
+
+      } catch(error) {
+
+          console.error(
+              "Video processing failed",
+              error
+          );
+
+      }
+
   };
 
   const playAlertSound = () => {
@@ -147,7 +183,8 @@ export default function Dashboard() {
           <AlertTriangle size={18} /> Simulate Sector B Alert
         </button>
       </div>
-
+      
+    
       <div className="dashboard-grid">
 
         {/* Main Live Camera Focus */}
