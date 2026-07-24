@@ -13,7 +13,7 @@ Run with:
 
 from flask import Flask, jsonify
 from flask_cors import CORS
-
+from app.api.routes_files import files_bp
 from app.core.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG, MAX_CONTENT_LENGTH
 from app.database.db import init_db
 
@@ -37,6 +37,7 @@ def create_app():
     app.register_blueprint(alerts_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(stream_bp)
+    app.register_blueprint(files_bp)
 
     @app.route("/health", methods=["GET"])
     def health():
