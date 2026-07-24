@@ -8,7 +8,6 @@ export default function Dashboard() {
   const [videoSource, setVideoSource] = useState(null);
   const [analysisResult,setAnalysisResult]=useState(null);
   const audioCtxRef = useRef(null);
-  const [processing, setProcessing] = useState(false);
 
   const handleVideoUpload = async (e) => {
 
@@ -237,16 +236,6 @@ export default function Dashboard() {
                   Feed Test Video
                   <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} />
                 </label>
-                {loading && (
-                    <p
-                      style={{
-                        color: "#FFD54F",
-                        marginTop: "10px"
-                      }}
-                    >
-                      Running AI Detection...
-                    </p>
-                  )}                
               </div>
             )}
           </div>
@@ -275,11 +264,11 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysis ? analysis.max_people_count : "--"}</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>42</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysis ? "Computed" : "--"}</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>MEDIUM</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
@@ -313,7 +302,7 @@ export default function Dashboard() {
             </div>
             <div style={{ borderLeft: '2px solid #f6ad55', paddingLeft: '1rem' }}>
               <div className="flex-between" style={{ marginBottom: '0.25rem' }}>
-                <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>{analysis ? analysis.final_risk_level : "NORMAL"}</span>
+                <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>WARNING - moderate</span>
                 <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>14:21:58</span>
               </div>
               <div style={{ color: '#ffffff', fontSize: '0.85rem' }}>movement rising...</div>
