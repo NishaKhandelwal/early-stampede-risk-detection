@@ -30,5 +30,23 @@ export const healthCheck = async () => {
     const response = await api.get("/health");
     return response.data;
 };
+export const uploadVideo = async (videoFile) => {
+    const formData = new FormData();
+
+    formData.append("video", videoFile);
+    formData.append("camera_id", "demo-camera");
+
+    const response = await api.post(
+        "/upload-video",
+        formData,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
+    );
+
+    return response.data;
+};
 
 export default api;

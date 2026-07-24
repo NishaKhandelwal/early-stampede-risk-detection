@@ -22,7 +22,10 @@ from app.utils.config import (
 )
 from app.utils.helpers import run_pipeline_on_frame, reset_motion_service
 from app.database.db import save_alert, save_analytics_snapshot
-from app.core.settings import FRAME_SAMPLE_RATE
+from app.core.settings import (
+    FRAME_SAMPLE_RATE,
+    OUTPUT_FOLDER,
+)
 from app.core.constants import ALERTABLE_RISK_LEVELS
 from app.utils.logger import get_logger
 
@@ -50,6 +53,22 @@ def upload_video():
     start_time = time.time()
 
     cap = cv2.VideoCapture(saved_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0:
+        fps = 20
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    output_filename = f"{camera_id}_processed.mp4"
+    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+    writer = cv2.VideoWriter(
+        output_path,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (width, height)
+    )
     if not cap.isOpened():
         return jsonify({"error": "Could not open uploaded video"}), 400
 
@@ -70,12 +89,13 @@ def upload_video():
         if frame_index % FRAME_SAMPLE_RATE != 0:
             continue
 
-        result = run_pipeline_on_frame(frame, camera_id=camera_id)
+        result = run_pipeline_on_frame(frame, camera_id=camera_id, annotate=True)
         processed_count += 1
         if processed_count % 20 == 0:
             print(f"Processed {processed_count} sampled frames...")
         people_counts.append(result["people_count"])
         last_result = result
+        writer.write(result["annotated_frame"])
 
         save_analytics_snapshot(
             camera_id=camera_id,
@@ -103,6 +123,7 @@ def upload_video():
             })
 
     cap.release()
+    writer.release()
     os.remove(saved_path)  # cleanup - don't keep uploaded videos around
 
     if processed_count == 0:
@@ -116,6 +137,7 @@ def upload_video():
         "avg_people_count": round(sum(people_counts) / len(people_counts), 2),
         "final_risk_level": last_result["risk_level"],
         "risk_events": risk_events,
+        "processed_video": output_filename,
     }
 
     return jsonify(summary), 200
