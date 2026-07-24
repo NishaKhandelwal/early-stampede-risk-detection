@@ -98,6 +98,9 @@ def run_pipeline_on_frame(frame, camera_id="default", annotate=False):
 
     # 1. Detection (Nisha)
     detection_result = detection_service.detect_people(frame)
+    print(
+        detection_result["inference_time"]
+    )
     people_count = detection_result["people_count"]
     detections = detection_result["detections"]
 

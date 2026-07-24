@@ -1,51 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X } from 'lucide-react';
-import { uploadVideo } from "../services/api";
+
+import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSector, setAlertSector] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
+  const [analysisResult,setAnalysisResult]=useState(null);
   const audioCtxRef = useRef(null);
   const [processing, setProcessing] = useState(false);
 
-  const [analysis, setAnalysis] = useState({
-    total_frames_processed: 0,
-    max_people_count: 0,
-    avg_people_count: 0,
-    final_risk_level: "NORMAL",
-  });
   const handleVideoUpload = async (e) => {
+
     const file = e.target.files[0];
 
-    if (!file) return;
+      if (!file) return;
 
-    // Preview video immediately
-    setVideoSource(URL.createObjectURL(file));
 
-    try {
-      setProcessing(true);
+      setVideoSource(URL.createObjectURL(file));
 
-      const result = await uploadVideo(file);
 
-      console.log(result);
+      try {
 
-      setAnalysis(result);
+          const result = await uploadVideo(file);
 
-      if (
-        result.final_risk_level === "WARNING" ||
-        result.final_risk_level === "HIGH RISK"
-      ) {
-        triggerAlert("A");
+          console.log(
+              "AI Result:",
+              result
+          );
+
+          setAnalysisResult(result);
+
+
+          if (
+              result.final_risk_level === "HIGH" ||
+              result.final_risk_level === "WARNING"
+          ) {
+              triggerAlert("B");
+          }
+
+
+      } catch(error) {
+
+          console.error(
+              "Video processing failed",
+              error
+          );
+
       }
 
-    } catch (err) {
-      console.error(err);
-      alert("Video processing failed.");
-    } finally {
-      setProcessing(false);
-    }
   };
 
   const playAlertSound = () => {
@@ -181,7 +184,8 @@ export default function Dashboard() {
           <AlertTriangle size={18} /> Simulate Sector B Alert
         </button>
       </div>
-
+      
+    
       <div className="dashboard-grid">
 
         {/* Main Live Camera Focus */}
