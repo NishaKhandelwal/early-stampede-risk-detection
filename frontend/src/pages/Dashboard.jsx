@@ -1,16 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X } from 'lucide-react';
-
+import { uploadVideo } from "../services/api";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSector, setAlertSector] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const audioCtxRef = useRef(null);
+  const [processing, setProcessing] = useState(false);
 
-  const handleVideoUpload = (e) => {
+  const [analysis, setAnalysis] = useState({
+    total_frames_processed: 0,
+    max_people_count: 0,
+    avg_people_count: 0,
+    final_risk_level: "NORMAL",
+  });
+  const handleVideoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setVideoSource(URL.createObjectURL(file));
+
+    if (!file) return;
+
+    // Preview video immediately
+    setVideoSource(URL.createObjectURL(file));
+
+    try {
+      setProcessing(true);
+
+      const result = await uploadVideo(file);
+
+      console.log(result);
+
+      setAnalysis(result);
+
+      if (
+        result.final_risk_level === "WARNING" ||
+        result.final_risk_level === "HIGH RISK"
+      ) {
+        triggerAlert("A");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Video processing failed.");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -199,6 +233,16 @@ export default function Dashboard() {
                   Feed Test Video
                   <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} />
                 </label>
+                {loading && (
+                    <p
+                      style={{
+                        color: "#FFD54F",
+                        marginTop: "10px"
+                      }}
+                    >
+                      Running AI Detection...
+                    </p>
+                  )}                
               </div>
             )}
           </div>
@@ -227,11 +271,11 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>42</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysis ? analysis.max_people_count : "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>MEDIUM</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysis ? "Computed" : "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
@@ -265,7 +309,7 @@ export default function Dashboard() {
             </div>
             <div style={{ borderLeft: '2px solid #f6ad55', paddingLeft: '1rem' }}>
               <div className="flex-between" style={{ marginBottom: '0.25rem' }}>
-                <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>WARNING - moderate</span>
+                <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>{analysis ? analysis.final_risk_level : "NORMAL"}</span>
                 <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>14:21:58</span>
               </div>
               <div style={{ color: '#ffffff', fontSize: '0.85rem' }}>movement rising...</div>
