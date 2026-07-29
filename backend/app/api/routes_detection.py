@@ -132,12 +132,29 @@ def upload_video():
 
     summary = {
         "camera_id": camera_id,
+
         "total_frames_processed": processed_count,
+
         "max_people_count": max(people_counts),
-        "avg_people_count": round(sum(people_counts) / len(people_counts), 2),
+
+        "avg_people_count": round(
+            sum(people_counts) / len(people_counts),
+            2
+        ),
+
         "final_risk_level": last_result["risk_level"],
+
+        "final_density_level": last_result["density_level"],
+
+        "final_density_score": last_result["density_score"],
+
+        "final_motion_level": last_result["motion_level"],
+
+        "final_motion_score": last_result["motion_score"],
+
+        "risk_message": last_result["risk_message"],
+
         "risk_events": risk_events,
-        "processed_video": output_filename,
     }
 
     return jsonify(summary), 200
