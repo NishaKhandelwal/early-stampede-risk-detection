@@ -212,32 +212,77 @@ export default function Dashboard() {
             position: 'relative',
             backgroundImage: 'radial-gradient(circle at center, #111 0%, #000 100%)'
           }}>
-            {/* Mock Bounding Boxes / AI detection */}
-            <div style={{ position: 'absolute', top: '30%', left: '40%', width: '120px', height: '150px', border: '2px solid var(--accent-yellow)', backgroundColor: 'rgba(204, 179, 0, 0.1)' }}></div>
-            <div style={{ position: 'absolute', top: '25%', left: '20%', width: '80px', height: '100px', border: '2px solid #2ecc71', backgroundColor: 'rgba(46, 204, 113, 0.1)' }}></div>
+            <div
+              style={{
+                flexGrow: 1,
+                backgroundColor: "#000",
+                position: "relative",
+                backgroundImage: "radial-gradient(circle at center, #111 0%, #000 100%)",
+              }}
+            >
+              {showAlert && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "10%",
+                    left: "10%",
+                    right: "10%",
+                    bottom: "10%",
+                    border: "4px solid var(--alert-red)",
+                    backgroundColor: "rgba(255, 77, 77, 0.1)",
+                    pointerEvents: "none",
+                    zIndex: 2,
+                  }}
+                ></div>
+              )}
 
-            {showAlert && (
-              <div style={{ position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%', border: '4px solid var(--alert-red)', backgroundColor: 'rgba(255, 77, 77, 0.1)', pointerEvents: 'none' }}></div>
-            )}
+              {videoSource ? (
+                <video
+                  src={videoSource}
+                  autoPlay
+                  loop
+                  muted
+                  controls
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <div
+                  className="flex-center"
+                  style={{
+                    height: "100%",
+                    color: "var(--text-secondary)",
+                    flexDirection: "column",
+                    gap: "1rem",
+                  }}
+                >
+                  <span>[ Main Camera AI Feed ]</span>
 
-            {videoSource ? (
-              <video
-                src={videoSource}
-                autoPlay
-                loop
-                muted
-                controls
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <div className="flex-center" style={{ height: '100%', color: 'var(--text-secondary)', flexDirection: 'column', gap: '1rem' }}>
-                <span>[ Main Camera AI Feed Placeholder ]</span>
-                <label className="btn-primary" style={{ cursor: 'pointer', backgroundColor: 'var(--panel-grey)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  Feed Test Video
-                  <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} />
-                </label>
-              </div>
-            )}
+                  <label
+                    className="btn-primary"
+                    style={{
+                      cursor: "pointer",
+                      backgroundColor: "var(--panel-grey)",
+                      color: "var(--text-primary)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    Feed Test Video
+
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+            
           </div>
         </div>
 
@@ -250,9 +295,24 @@ export default function Dashboard() {
               <span style={{ color: '#ffffff', letterSpacing: '2px', fontWeight: 'bold', fontSize: '0.8rem' }}>RISK STATUS</span>
               <span style={{ color: '#4a5568', letterSpacing: '1px', fontSize: '0.7rem' }}>RULE-BASED</span>
             </div>
-            <h2 style={{ color: '#f6ad55', margin: '0 0 0.5rem 0', fontSize: '2rem', letterSpacing: '1px' }}>WARNING</h2>
-            <p style={{ color: '#718096', margin: 0, fontSize: '0.85rem', lineHeight: '1.6' }}>
-              Medium crowd density with<br />moderate/increasing movement.
+            <h2
+            style={{
+              
+              color:
+                analysisResult?.final_risk_level === "HIGH RISK"
+                  ? "#ef4444"
+                  : analysisResult?.final_risk_level === "WARNING"
+                  ? "#f59e0b"
+                  : "#22c55e",
+              margin: "0 0 0.5rem 0",
+              fontSize: "2rem",
+              letterSpacing: "1px",
+            }}
+            >
+              {analysisResult?.final_risk_level || "NO DATA"}
+            </h2>
+            <p style={{ color: "#718096", margin: 0, fontSize: "0.85rem", lineHeight: "1.6" }}>
+              {analysisResult?.risk_message || "Upload a video to begin AI analysis."}
             </p>
           </div>
 
@@ -264,15 +324,15 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>42</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.max_people_count ?? "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>MEDIUM</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>M{analysisResult?.final_density_level ?? "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>3.41</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score?.toFixed(2) ?? "--"}</span>
               </div>
             </div>
           </div>
@@ -295,21 +355,69 @@ export default function Dashboard() {
           </div>
 
           {/* ALERT LOG */}
-          <div style={{ backgroundColor: '#0d1114', border: '1px solid #1e252b', borderRadius: '4px', padding: '1.25rem' }}>
-            <div className="flex-between" style={{ borderBottom: '1px solid #1e252b', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
-              <span style={{ color: '#ffffff', letterSpacing: '2px', fontWeight: 'bold', fontSize: '0.8rem' }}>ALERT LOG</span>
-              <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>3</span>
-            </div>
-            <div style={{ borderLeft: '2px solid #f6ad55', paddingLeft: '1rem' }}>
-              <div className="flex-between" style={{ marginBottom: '0.25rem' }}>
-                <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>WARNING - moderate</span>
-                <span style={{ color: '#4a5568', fontSize: '0.8rem' }}>14:21:58</span>
-              </div>
-              <div style={{ color: '#ffffff', fontSize: '0.85rem' }}>movement rising...</div>
-            </div>
-          </div>
-        </div>
+          {analysisResult?.risk_events?.length > 0 ? (
 
+            analysisResult.risk_events.map((event, index) => (
+
+              <div
+                key={index}
+                style={{
+                  borderLeft: "2px solid #f59e0b",
+                  paddingLeft: "1rem",
+                  marginBottom: "1rem",
+                }}
+              >
+
+                <div className="flex-between">
+
+                  <span
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "0.85rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {event.risk_level}
+                  </span>
+
+                  <span
+                    style={{
+                      color: "#718096",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Frame {event.frame}
+                  </span>
+
+                </div>
+
+                <div
+                  style={{
+                    color: "#cbd5e1",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  People Count : {event.people_count}
+                </div>
+
+              </div>
+
+            ))
+
+          ) : (
+
+            <p
+              style={{
+                color: "#718096",
+                margin: 0,
+              }}
+            >
+              No alerts detected.
+            </p>
+
+          )}
+
+        </div>
       </div>
 
       <style>{`
