@@ -4,7 +4,6 @@ import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, Shi
 import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
-  const [alertSector, setAlertSector] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
   const [processedVideo, setProcessedVideo] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -48,6 +47,54 @@ export default function Dashboard() {
     }
 
 };
+  const generateMotionPoints = () => {
+
+    if (
+      !analysisResult?.motion_history ||
+      analysisResult.motion_history.length === 0
+    ) {
+      return "0,35 200,35";
+    }
+
+    const history = analysisResult.motion_history;
+
+    const maxValue = Math.max(...history, 1);
+
+    return history
+      .map((value, index) => {
+
+        const x =
+          (index / (history.length - 1 || 1)) * 200;
+
+        const y =
+          35 - (value / maxValue) * 25;
+
+        return `${x},${y}`;
+
+      })
+      .join(" ");
+
+  };
+  const generatePeoplePoints = () => {
+
+    if (!analysisResult?.people_history?.length)
+      return "0,35 200,35";
+
+    const history = analysisResult.people_history;
+
+    const max = Math.max(...history,1);
+
+    return history.map((value,index)=>{
+
+        const x=(index/(history.length-1||1))*200;
+
+        const y=35-(value/max)*25;
+
+        return `${x},${y}`;
+
+    }).join(" ");
+
+  };
 
   const playAlertSound = () => {
     try {
@@ -115,7 +162,7 @@ export default function Dashboard() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ color: '#ff5d5d', fontWeight: '800', letterSpacing: '0.35em', fontSize: '0.78rem' }}>ALERT</span>
-              <span style={{ background: 'linear-gradient(90deg, rgba(255,77,77,0.95), rgba(255,143,143,0.95))', color: '#000', padding: '0.25rem 0.85rem', borderRadius: '999px', fontWeight: '700', fontSize: '0.75rem', letterSpacing: '0.08em' }}>HIGH RISK</span>
+              <span style={{ background: 'linear-gradient(90deg, rgba(255,77,77,0.95), rgba(255,143,143,0.95))', color: '#000', padding: '0.25rem 0.85rem', borderRadius: '999px', fontWeight: '700', fontSize: '0.75rem', letterSpacing: '0.08em' }}>HIGH</span>
             </div>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -305,8 +352,64 @@ export default function Dashboard() {
           </div>
           
         </div>
-        
+        <div
+        className="panel"
+        style={{
+        marginTop:"1rem"
+        }}
+        >
 
+        <h3>Analysis Summary</h3>
+
+        <div className="flex-between">
+
+        <span>Frames Processed</span>
+
+        <strong>
+
+        {analysisResult?.total_frames_processed??"--"}
+
+        </strong>
+
+        </div>
+
+        <div className="flex-between">
+
+        <span>Average People</span>
+
+        <strong>
+
+        {analysisResult?.avg_people_count??"--"}
+
+        </strong>
+
+        </div>
+
+        <div className="flex-between">
+
+        <span>Maximum People</span>
+
+        <strong>
+
+        {analysisResult?.max_people_count??"--"}
+
+        </strong>
+
+        </div>
+
+        <div className="flex-between">
+
+        <span>Risk Events</span>
+
+        <strong>
+
+        {analysisResult?.risk_events?.length??0}
+
+        </strong>
+
+        </div>
+
+        </div>
         {/* Technical Sidebar from Screenshot */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
 
@@ -318,19 +421,42 @@ export default function Dashboard() {
             </div>
             <h2
             style={{
-              
-              color:
-                analysisResult?.final_risk_level === "HIGH RISK"
-                  ? "#ef4444"
-                  : analysisResult?.final_risk_level === "WARNING"
-                  ? "#f59e0b"
-                  : "#22c55e",
-              margin: "0 0 0.5rem 0",
-              fontSize: "2rem",
-              letterSpacing: "1px",
+            color:
+            analysisResult?.final_risk_level==="HIGH"
+            ?"#ef4444"
+            :analysisResult?.final_risk_level==="WARNING"
+            ?"#f59e0b"
+            :"#22c55e",
+
+            fontSize:"2rem",
+
+            fontWeight:"700",
+
+            display:"flex",
+
+            alignItems:"center",
+
+            gap:"0.5rem"
+
             }}
             >
-              {analysisResult?.final_risk_level || "NO DATA"}
+
+            {
+
+            analysisResult?.final_risk_level==="HIGH"
+
+            ?"🔴"
+
+            :analysisResult?.final_risk_level==="WARNING"
+
+            ?"🟡"
+
+            :"🟢"
+
+            }
+
+            {analysisResult?.final_risk_level??"--"}
+
             </h2>
             <p style={{ color: "#718096", margin: 0, fontSize: "0.85rem", lineHeight: "1.6" }}>
               {analysisResult?.risk_message || "Upload a video to begin AI analysis."}
@@ -355,148 +481,294 @@ export default function Dashboard() {
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
                 <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score != null? analysisResult.final_motion_score.toFixed(2): "--"}</span>
               </div>
-            </div>
-          </div>
-
-          {/* MOTION PULSE */}
-          <div style={{ backgroundColor: '#0d1114', border: '1px solid #1e252b', borderRadius: '4px', padding: '1.25rem' }}>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <span style={{ color: '#ffffff', letterSpacing: '2px', fontWeight: 'bold', fontSize: '0.8rem' }}>MOTION PULSE</span>
-            </div>
-            <div style={{ height: '50px', display: 'flex', alignItems: 'center' }}>
-              <svg viewBox="0 0 200 40" style={{ width: '100%', height: '100%' }} preserveAspectRatio="none">
-                <polyline
-                  points="0,35 20,32 40,25 60,28 80,18 100,22 120,15 140,20 160,12 180,20 200,16"
-                  fill="none"
-                  stroke="#f6ad55"
-                  strokeWidth="2.5"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* ALERT LOG */}
-          {analysisResult?.risk_events?.length > 0 ? (
-
-            analysisResult.risk_events.map((event, index) => {
-
-              const badgeColor =
-                event.risk_level === "HIGH RISK"
-                  ? "#ef4444"
-                  : event.risk_level === "WARNING"
-                  ? "#f59e0b"
-                  : "#22c55e";
-
-              return (
-
-                <div
-                  key={index}
-                  style={{
-                    backgroundColor: "#11161b",
-                    border: "1px solid #1f2937",
-                    borderLeft: `4px solid ${badgeColor}`,
-                    borderRadius: "8px",
-                    padding: "1rem",
-                    marginBottom: "0.9rem",
-                  }}
-                >
-
-                  <div
-                    className="flex-between"
-                    style={{
-                      marginBottom: "0.8rem",
-                      alignItems: "center",
-                    }}
-                  >
-
-                    <span
-                      style={{
-                        backgroundColor: badgeColor,
-                        color: "#fff",
-                        padding: "4px 10px",
-                        borderRadius: "20px",
-                        fontSize: "0.75rem",
-                        fontWeight: "700",
-                        letterSpacing: "0.05rem",
-                      }}
-                    >
-                      {event.risk_level}
-                    </span>
-
-                    <span
-                      style={{
-                        color: "#94a3b8",
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      Frame #{event.frame}
-                    </span>
-
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      color: "#e2e8f0",
-                      fontSize: "0.88rem",
-                    }}
-                  >
-                    <span>👥 People Detected</span>
-
-                    <strong>{event.people_count}</strong>
-                  </div>
-
-                </div>
-
-              );
-
-            })
-
-          ) : (
-
-            <div
+              <div
               style={{
-                textAlign: "center",
-                padding: "1.5rem 0",
-                color: "#64748b",
-                fontSize: "0.9rem",
+              marginTop:"1rem",
+              height:"60px"
+              }}
+              >
+
+              <svg
+              viewBox="0 0 200 40"
+              style={{
+              width:"100%",
+              height:"100%"
+              }}
+              preserveAspectRatio="none"
+              >
+
+              <polyline
+              points={generatePeoplePoints()}
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="2.5"
+              />
+
+              </svg>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* MOTION PULSE */}
+        <div
+          style={{
+            backgroundColor: "#0d1114",
+            border: "1px solid #1e252b",
+            borderRadius: "4px",
+            padding: "1.25rem",
+          }}
+        >
+          <div style={{ marginBottom: "1.25rem" }}>
+            <span
+              style={{
+                color: "#ffffff",
+                letterSpacing: "2px",
+                fontWeight: "bold",
+                fontSize: "0.8rem",
               }}
             >
+              MOTION PULSE
+            </span>
+          </div>
 
-              <div
-                style={{
-                  fontSize: "2rem",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                ✅
-              </div>
+          {/* Motion Graph */}
+          <div
+            style={{
+              height: "50px",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <svg
+              viewBox="0 0 200 40"
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+              preserveAspectRatio="none"
+            >
+              <polyline
+                points={generateMotionPoints()}
+                fill="none"
+                stroke="#f6ad55"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
 
-              <div
-                style={{
-                  color: "#cbd5e1",
-                  fontWeight: "600",
-                }}
-              >
-                No Alerts Detected
-              </div>
+          {/* Current Motion */}
+          <div
+            style={{
+              marginTop: "1rem",
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+            }}
+          >
+            <span style={{ color: "#718096" }}>
+              Current Motion
+            </span>
 
-              <div
+            <span
+              style={{
+                color: "#ffffff",
+                fontWeight: "bold",
+              }}
+            >
+              {analysisResult?.final_motion_score?.toFixed(2) ?? "--"}
+            </span>
+          </div>
+
+          {/* Motion Level */}
+          <div
+            style={{
+              marginTop: "0.5rem",
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+            }}
+          >
+            <span style={{ color: "#718096" }}>
+              Motion Level
+            </span>
+
+            <span
+              style={{
+                color:
+                  analysisResult?.final_motion_level === "HIGH"
+                    ? "#ef4444"
+                    : analysisResult?.final_motion_level === "MEDIUM"
+                    ? "#f59e0b"
+                    : "#22c55e",
+                fontWeight: "bold",
+              }}
+            >
+              {analysisResult?.final_motion_level ?? "--"}
+            </span>
+          </div>
+        </div>
+
+          {/* ALERT LOG */}
+          <div
+            style={{
+              backgroundColor: "#0d1114",
+              border: "1px solid #1e252b",
+              borderRadius: "4px",
+              padding: "1.25rem",
+            }}
+          >
+            <div
+              className="flex-between"
+              style={{
+                borderBottom: "1px solid #1e252b",
+                paddingBottom: "0.75rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <span
                 style={{
+                  color: "#ffffff",
+                  letterSpacing: "2px",
+                  fontWeight: "bold",
                   fontSize: "0.8rem",
-                  marginTop: "0.4rem",
                 }}
               >
-                Crowd conditions are currently stable.
-              </div>
+                ALERT LOG
+              </span>
 
+              <span
+                style={{
+                  color: "#64748b",
+                  fontSize: "0.8rem",
+                }}
+              >
+                {analysisResult?.risk_events?.length ?? 0}
+              </span>
             </div>
 
-          )}
+            {analysisResult?.risk_events?.length > 0 ? (
 
+              analysisResult.risk_events.map((event, index) => {
+
+                const badgeColor =
+                  event.risk_level === "HIGH"
+                    ? "#ef4444"
+                    : event.risk_level === "WARNING"
+                    ? "#f59e0b"
+                    : "#22c55e";
+
+                return (
+
+                  <div
+                    key={index}
+                    style={{
+                      backgroundColor: "#11161b",
+                      border: "1px solid #1f2937",
+                      borderLeft: `4px solid ${badgeColor}`,
+                      borderRadius: "8px",
+                      padding: "1rem",
+                      marginBottom: "0.9rem",
+                    }}
+                  >
+
+                    <div
+                      className="flex-between"
+                      style={{
+                        marginBottom: "0.8rem",
+                        alignItems: "center",
+                      }}
+                    >
+
+                      <span
+                        style={{
+                          backgroundColor: badgeColor,
+                          color: "#fff",
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          fontSize: "0.75rem",
+                          fontWeight: "700",
+                          letterSpacing: "0.05rem",
+                        }}
+                      >
+                        {event.risk_level}
+                      </span>
+
+                      <span
+                        style={{
+                          color: "#94a3b8",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        Frame #{event.frame}
+                      </span>
+
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        color: "#e2e8f0",
+                        fontSize: "0.88rem",
+                      }}
+                    >
+                      <span>👥 People Detected</span>
+
+                      <strong>{event.people_count}</strong>
+                    </div>
+
+                  </div>
+
+                );
+
+              })
+
+            ) : (
+
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "1.5rem 0",
+                  color: "#64748b",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "2rem",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  ✅
+                </div>
+
+                <div
+                  style={{
+                    color: "#cbd5e1",
+                    fontWeight: "600",
+                  }}
+                >
+                  No Alerts Detected
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    marginTop: "0.5rem",
+                  }}
+                >
+                  Crowd conditions are currently stable.
+                </div>
+
+              </div>
+
+            )}
+          </div>
         </div>
-      </div>
+      
 
       <style>{`
         @keyframes pulse {

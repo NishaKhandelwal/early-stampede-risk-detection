@@ -11,6 +11,7 @@ Endpoints:
 """
 
 import os
+from unittest import result
 import cv2
 import time
 from flask import Blueprint, request, jsonify
@@ -77,6 +78,8 @@ def upload_video():
     frame_index = 0
     processed_count = 0
     people_counts = []
+    motion_history = []
+    density_history = []
     risk_events = []
     last_result = None
 
@@ -94,6 +97,8 @@ def upload_video():
         if processed_count % 20 == 0:
             print(f"Processed {processed_count} sampled frames...")
         people_counts.append(result["people_count"])
+        motion_history.append(result["motion_score"] or 0)
+        density_history.append(result["density_score"])
         last_result = result
         writer.write(result["annotated_frame"])
 
@@ -132,33 +137,29 @@ def upload_video():
     processed_video_url = f"http://127.0.0.1:5000/outputs/{output_filename}"
 
     summary = {
-    "camera_id": camera_id,
+        "camera_id": camera_id,
 
-    "processed_video":
-        f"http://127.0.0.1:5000/outputs/{output_filename}",
-    "total_frames_processed": processed_count,
+        "processed_video":
+            f"http://127.0.0.1:5000/outputs/{output_filename}",
+        "total_frames_processed": processed_count,
 
-    "max_people_count": max(people_counts),
+        "max_people_count": max(people_counts),
 
-    "avg_people_count": round(
-        sum(people_counts) / len(people_counts),
-        2
-    ),
-
-    "final_risk_level": last_result["risk_level"],
-
-    "final_density_level": last_result["density_level"],
-
-    "final_density_score": last_result["density_score"],
-
-    "final_motion_level": last_result["motion_level"],
-
-    "final_motion_score": last_result["motion_score"],
-
-    "risk_message": last_result["risk_message"],
-
-    "risk_events": risk_events,
-}
+        "avg_people_count": round(
+            sum(people_counts) / len(people_counts),
+            2
+        ),
+        "final_risk_level": last_result["risk_level"],
+        "final_density_level": last_result["density_level"],
+        "final_density_score": last_result["density_score"],
+        "final_motion_level": last_result["motion_level"],
+        "final_motion_score": last_result["motion_score"],
+        "motion_history": motion_history,
+        "people_history": people_counts,
+        "density_history": density_history,
+        "risk_message": last_result["risk_message"],
+        "risk_events": risk_events,
+    }
     summary["processed_video"] = (
         f"http://127.0.0.1:5000/outputs/{output_filename}"
     )
