@@ -119,42 +119,135 @@ def save_analytics_snapshot(camera_id, people_count, density_score, density_leve
 
 def get_analytics_summary(camera_id=None, limit=200):
     """
-    Returns raw recent snapshots plus simple aggregates
-    (avg people count, risk-level breakdown) for dashboards/charts.
+    Returns analytics in a frontend-friendly format.
+
+    Includes:
+    - Raw snapshots
+    - Crowd trend
+    - Density trend
+    - Motion trend
+    - Risk timeline
+    - Summary statistics
     """
+
     conn = get_connection()
     cur = conn.cursor()
 
     if camera_id:
         cur.execute("""
-            SELECT * FROM analytics WHERE camera_id = ?
-            ORDER BY id DESC LIMIT ?
+            SELECT *
+            FROM analytics
+            WHERE camera_id = ?
+            ORDER BY id ASC
+            LIMIT ?
         """, (camera_id, limit))
     else:
         cur.execute("""
-            SELECT * FROM analytics ORDER BY id DESC LIMIT ?
+            SELECT *
+            FROM analytics
+            ORDER BY id ASC
+            LIMIT ?
         """, (limit,))
 
     rows = [dict(row) for row in cur.fetchall()]
+
     conn.close()
 
     if not rows:
         return {
             "snapshots": [],
-            "avg_people_count": 0,
-            "max_people_count": 0,
-            "risk_breakdown": {"NORMAL": 0, "WARNING": 0, "HIGH RISK": 0},
+            "people_history": [],
+            "density_history": [],
+            "motion_history": [],
+            "risk_timeline": [],
+            "summary": {
+                "avg_people": 0,
+                "max_people": 0,
+                "avg_density": 0,
+                "avg_motion": 0,
+            },
+            "risk_breakdown": {
+                "NORMAL": 0,
+                "WARNING": 0,
+                "HIGH RISK": 0,
+            }
         }
 
-    people_counts = [r["people_count"] for r in rows if r["people_count"] is not None]
-    risk_breakdown = {"NORMAL": 0, "WARNING": 0, "HIGH RISK": 0}
-    for r in rows:
-        if r["risk_level"] in risk_breakdown:
-            risk_breakdown[r["risk_level"]] += 1
+    people_history = []
+    density_history = []
+    motion_history = []
+    risk_timeline = []
+
+    risk_breakdown = {
+        "NORMAL": 0,
+        "WARNING": 0,
+        "HIGH RISK": 0,
+    }
+
+    people_values = []
+    density_values = []
+    motion_values = []
+
+    for row in rows:
+
+        timestamp = row["timestamp"][11:19]
+
+        people = row["people_count"] or 0
+        density = row["density_score"] or 0
+        motion = row["motion_score"] or 0
+        risk = row["risk_level"]
+
+        people_values.append(people)
+        density_values.append(density)
+        motion_values.append(motion)
+
+        people_history.append({
+            "time": timestamp,
+            "value": people
+        })
+
+        density_history.append({
+            "time": timestamp,
+            "value": round(density, 3)
+        })
+
+        motion_history.append({
+            "time": timestamp,
+            "value": round(motion, 3)
+        })
+
+        risk_timeline.append({
+            "time": timestamp,
+            "risk": risk
+        })
+
+        if risk in risk_breakdown:
+            risk_breakdown[risk] += 1
 
     return {
+
         "snapshots": rows,
-        "avg_people_count": round(sum(people_counts) / len(people_counts), 2) if people_counts else 0,
-        "max_people_count": max(people_counts) if people_counts else 0,
-        "risk_breakdown": risk_breakdown,
+
+        "people_history": people_history,
+
+        "density_history": density_history,
+
+        "motion_history": motion_history,
+
+        "risk_timeline": risk_timeline,
+
+        "summary": {
+
+            "avg_people": round(sum(people_values) / len(people_values), 2),
+
+            "max_people": max(people_values),
+
+            "avg_density": round(sum(density_values) / len(density_values), 3),
+
+            "avg_motion": round(sum(motion_values) / len(motion_values), 3),
+
+        },
+
+        "risk_breakdown": risk_breakdown
+
     }
