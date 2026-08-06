@@ -1,54 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X } from 'lucide-react';
+import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, ShieldCheck } from 'lucide-react';
 
 import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSector, setAlertSector] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
+  const [processedVideo, setProcessedVideo] = useState(null);
+  const [processing, setProcessing] = useState(false);
   const [analysisResult,setAnalysisResult]=useState(null);
   const audioCtxRef = useRef(null);
-
+  
   const handleVideoUpload = async (e) => {
 
     const file = e.target.files[0];
 
-      if (!file) return;
+    if (!file) return;
 
+    setProcessing(true);
+    setProcessedVideo(null);
+    setVideoSource(URL.createObjectURL(file));
 
-      setVideoSource(URL.createObjectURL(file));
+    try {
 
+        const result = await uploadVideo(file);
 
-      try {
+        console.log("AI Result:", result);
 
-          const result = await uploadVideo(file);
+        setAnalysisResult(result);
+        setProcessedVideo(result.processed_video);
 
-          console.log(
-              "AI Result:",
-              result
-          );
+        if (
+            result.final_risk_level === "HIGH" ||
+            result.final_risk_level === "WARNING"
+        ) {
+            triggerAlert("B");
+        }
 
-          setAnalysisResult(result);
+    } catch (error) {
 
+        console.error("Video processing failed", error);
 
-          if (
-              result.final_risk_level === "HIGH" ||
-              result.final_risk_level === "WARNING"
-          ) {
-              triggerAlert("B");
-          }
+    } finally {
 
+        setProcessing(false);
 
-      } catch(error) {
+    }
 
-          console.error(
-              "Video processing failed",
-              error
-          );
-
-      }
-
-  };
+};
 
   const playAlertSound = () => {
     try {
@@ -206,85 +205,107 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div style={{
-            flexGrow: 1,
-            backgroundColor: '#000',
-            position: 'relative',
-            backgroundImage: 'radial-gradient(circle at center, #111 0%, #000 100%)'
-          }}>
-            <div
-              style={{
-                flexGrow: 1,
-                backgroundColor: "#000",
-                position: "relative",
-                backgroundImage: "radial-gradient(circle at center, #111 0%, #000 100%)",
-              }}
-            >
-              {showAlert && (
+    
+          <div
+            style={{
+              flexGrow: 1,
+              backgroundColor: "#000",
+              position: "relative",
+              backgroundImage: "radial-gradient(circle at center, #111 0%, #000 100%)",
+            }}
+          >
+            {showAlert && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "10%",
+                  left: "10%",
+                  right: "10%",
+                  bottom: "10%",
+                  border: "4px solid var(--alert-red)",
+                  backgroundColor: "rgba(255, 77, 77, 0.1)",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                }}
+              ></div>
+            )}
+            {processing ? (
+              <div
+                className="flex-center"
+                style={{
+                  height: "100%",
+                  flexDirection: "column",
+                  gap: "1rem",
+                  color: "white",
+                }}
+              >
                 <div
                   style={{
-                    position: "absolute",
-                    top: "10%",
-                    left: "10%",
-                    right: "10%",
-                    bottom: "10%",
-                    border: "4px solid var(--alert-red)",
-                    backgroundColor: "rgba(255, 77, 77, 0.1)",
-                    pointerEvents: "none",
-                    zIndex: 2,
-                  }}
-                ></div>
-              )}
-
-              {videoSource ? (
-                <video
-                  src={videoSource}
-                  autoPlay
-                  loop
-                  muted
-                  controls
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
+                    width: "60px",
+                    height: "60px",
+                    border: "5px solid rgba(255,255,255,0.2)",
+                    borderTop: "5px solid #00e5ff",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
                   }}
                 />
-              ) : (
-                <div
-                  className="flex-center"
+
+                <h3>Analyzing Video...</h3>
+
+                <p style={{ color: "#999" }}>
+                  Running AI detection, density estimation,
+                  motion analysis and risk assessment.
+                </p>
+              </div>
+            ) : videoSource ? (
+              <video
+                src={processedVideo || videoSource}
+                autoPlay
+                loop
+                muted
+                controls
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div
+                className="flex-center"
+                style={{
+                  height: "100%",
+                  color: "var(--text-secondary)",
+                  flexDirection: "column",
+                  gap: "1rem",
+                }}
+              >
+                <span>[ Main Camera AI Feed ]</span>
+
+                <label
+                  className="btn-primary"
                   style={{
-                    height: "100%",
-                    color: "var(--text-secondary)",
-                    flexDirection: "column",
-                    gap: "1rem",
+                    cursor: "pointer",
+                    backgroundColor: "var(--panel-grey)",
+                    color: "var(--text-primary)",
+                    border: "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
-                  <span>[ Main Camera AI Feed ]</span>
+                  Feed Test Video
 
-                  <label
-                    className="btn-primary"
-                    style={{
-                      cursor: "pointer",
-                      backgroundColor: "var(--panel-grey)",
-                      color: "var(--text-primary)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    Feed Test Video
-
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoUpload}
-                      style={{ display: "none" }}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-            
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </div>
+            )}
           </div>
+          
         </div>
+        
 
         {/* Technical Sidebar from Screenshot */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -328,11 +349,11 @@ export default function Dashboard() {
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>M{analysisResult?.final_density_level ?? "--"}</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_density_level ?? "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score?.toFixed(2) ?? "--"}</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score != null? analysisResult.final_motion_score.toFixed(2): "--"}</span>
               </div>
             </div>
           </div>
@@ -357,63 +378,120 @@ export default function Dashboard() {
           {/* ALERT LOG */}
           {analysisResult?.risk_events?.length > 0 ? (
 
-            analysisResult.risk_events.map((event, index) => (
+            analysisResult.risk_events.map((event, index) => {
 
-              <div
-                key={index}
-                style={{
-                  borderLeft: "2px solid #f59e0b",
-                  paddingLeft: "1rem",
-                  marginBottom: "1rem",
-                }}
-              >
+              const badgeColor =
+                event.risk_level === "HIGH RISK"
+                  ? "#ef4444"
+                  : event.risk_level === "WARNING"
+                  ? "#f59e0b"
+                  : "#22c55e";
 
-                <div className="flex-between">
-
-                  <span
-                    style={{
-                      color: "#ffffff",
-                      fontSize: "0.85rem",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {event.risk_level}
-                  </span>
-
-                  <span
-                    style={{
-                      color: "#718096",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Frame {event.frame}
-                  </span>
-
-                </div>
+              return (
 
                 <div
+                  key={index}
                   style={{
-                    color: "#cbd5e1",
-                    fontSize: "0.85rem",
+                    backgroundColor: "#11161b",
+                    border: "1px solid #1f2937",
+                    borderLeft: `4px solid ${badgeColor}`,
+                    borderRadius: "8px",
+                    padding: "1rem",
+                    marginBottom: "0.9rem",
                   }}
                 >
-                  People Count : {event.people_count}
+
+                  <div
+                    className="flex-between"
+                    style={{
+                      marginBottom: "0.8rem",
+                      alignItems: "center",
+                    }}
+                  >
+
+                    <span
+                      style={{
+                        backgroundColor: badgeColor,
+                        color: "#fff",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        fontSize: "0.75rem",
+                        fontWeight: "700",
+                        letterSpacing: "0.05rem",
+                      }}
+                    >
+                      {event.risk_level}
+                    </span>
+
+                    <span
+                      style={{
+                        color: "#94a3b8",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      Frame #{event.frame}
+                    </span>
+
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      color: "#e2e8f0",
+                      fontSize: "0.88rem",
+                    }}
+                  >
+                    <span>👥 People Detected</span>
+
+                    <strong>{event.people_count}</strong>
+                  </div>
+
                 </div>
 
-              </div>
+              );
 
-            ))
+            })
 
           ) : (
 
-            <p
+            <div
               style={{
-                color: "#718096",
-                margin: 0,
+                textAlign: "center",
+                padding: "1.5rem 0",
+                color: "#64748b",
+                fontSize: "0.9rem",
               }}
             >
-              No alerts detected.
-            </p>
+
+              <div
+                style={{
+                  fontSize: "2rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                ✅
+              </div>
+
+              <div
+                style={{
+                  color: "#cbd5e1",
+                  fontWeight: "600",
+                }}
+              >
+                No Alerts Detected
+              </div>
+
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  marginTop: "0.4rem",
+                }}
+              >
+                Crowd conditions are currently stable.
+              </div>
+
+            </div>
 
           )}
 
@@ -426,9 +504,27 @@ export default function Dashboard() {
           50% { opacity: 0.4; }
           100% { opacity: 1; }
         }
+
         @keyframes modalPop {
-          0% { transform: scale(0.9); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
+          0% {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>
