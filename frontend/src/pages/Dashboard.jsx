@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, ShieldCheck } from 'lucide-react';
-
+import "./Dashboard.css";
 import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [videoSource, setVideoSource] = useState(null);
+  const [alertSector, setAlertSector] = useState(null);
   const [processedVideo, setProcessedVideo] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [analysisResult,setAnalysisResult]=useState(null);
@@ -231,8 +232,8 @@ export default function Dashboard() {
       </div>
       
     
-      <div className="dashboard-grid">
-
+      <div className="dashboard-layout">
+        {/* LEFT */}
         {/* Main Live Camera Focus */}
         <div className="panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -276,47 +277,44 @@ export default function Dashboard() {
                 }}
               ></div>
             )}
-            {processing ? (
-              <div
-                className="flex-center"
-                style={{
-                  height: "100%",
-                  flexDirection: "column",
-                  gap: "1rem",
-                  color: "white",
-                }}
-              >
-                <div
+            {videoSource ? (
+              <>
+                <video
+                  src={processedVideo || videoSource}
+                  autoPlay
+                  loop
+                  muted
+                  controls
                   style={{
-                    width: "60px",
-                    height: "60px",
-                    border: "5px solid rgba(255,255,255,0.2)",
-                    borderTop: "5px solid #00e5ff",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
                   }}
                 />
 
-                <h3>Analyzing Video...</h3>
+                {processing && (
+                  <div className="processing-overlay">
+                    <div
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        border: "5px solid rgba(255,255,255,0.2)",
+                        borderTop: "5px solid #00e5ff",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                        marginBottom: "1rem",
+                      }}
+                    />
 
-                <p style={{ color: "#999" }}>
-                  Running AI detection, density estimation,
-                  motion analysis and risk assessment.
-                </p>
-              </div>
-            ) : videoSource ? (
-              <video
-                src={processedVideo || videoSource}
-                autoPlay
-                loop
-                muted
-                controls
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
+                    <h2>AI Processing...</h2>
+
+                    <p>👤 Detecting Crowd</p>
+                    <p>📊 Estimating Density</p>
+                    <p>🏃 Motion Analysis</p>
+                    <p>⚠ Risk Assessment</p>
+                  </div>
+                )}
+              </>
             ) : (
               <div
                 className="flex-center"
@@ -350,69 +348,61 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          
+           
         </div>
-        <div
-        className="panel"
-        style={{
-        marginTop:"1rem"
-        }}
-        >
-
-        <h3>Analysis Summary</h3>
-
-        <div className="flex-between">
-
-        <span>Frames Processed</span>
-
-        <strong>
-
-        {analysisResult?.total_frames_processed??"--"}
-
-        </strong>
-
-        </div>
-
-        <div className="flex-between">
-
-        <span>Average People</span>
-
-        <strong>
-
-        {analysisResult?.avg_people_count??"--"}
-
-        </strong>
-
-        </div>
-
-        <div className="flex-between">
-
-        <span>Maximum People</span>
-
-        <strong>
-
-        {analysisResult?.max_people_count??"--"}
-
-        </strong>
-
-        </div>
-
-        <div className="flex-between">
-
-        <span>Risk Events</span>
-
-        <strong>
-
-        {analysisResult?.risk_events?.length??0}
-
-        </strong>
-
-        </div>
-
-        </div>
+        
+        {/* RIGHT */}
+        <div className="sidebar-metrics">
+            
         {/* Technical Sidebar from Screenshot */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+          {/* CROWD METRICS */}
+          <div style={{ backgroundColor: '#0d1114', border: '1px solid #1e252b', borderRadius: '4px', padding: '1.25rem' }}>
+            <div style={{ borderBottom: '1px solid #1e252b', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
+              <span style={{ color: '#ffffff', letterSpacing: '2px', fontWeight: 'bold', fontSize: '0.8rem' }}>CROWD METRICS</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="flex-between">
+                <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.max_people_count ?? "--"}</span>
+              </div>
+              <div className="flex-between">
+                <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_density_level ?? "--"}</span>
+              </div>
+              <div className="flex-between">
+                <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score != null? analysisResult.final_motion_score.toFixed(2): "--"}</span>
+              </div>
+              <div
+              style={{
+              marginTop:"1rem",
+              height:"60px"
+              }}
+              >
 
+              <svg
+              viewBox="0 0 200 40"
+              style={{
+              width:"100%",
+              height:"100%"
+              }}
+              preserveAspectRatio="none"
+              >
+
+              <polyline
+              points={generatePeoplePoints()}
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="2.5"
+              />
+
+              </svg>
+
+              </div>
+            </div>
+          </div>
+        </div>
           {/* RISK STATUS */}
           <div style={{ backgroundColor: '#0d1114', border: '1px solid #1e252b', borderRadius: '4px', padding: '1.25rem' }}>
             <div className="flex-between" style={{ borderBottom: '1px solid #1e252b', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
@@ -462,54 +452,6 @@ export default function Dashboard() {
               {analysisResult?.risk_message || "Upload a video to begin AI analysis."}
             </p>
           </div>
-
-          {/* CROWD METRICS */}
-          <div style={{ backgroundColor: '#0d1114', border: '1px solid #1e252b', borderRadius: '4px', padding: '1.25rem' }}>
-            <div style={{ borderBottom: '1px solid #1e252b', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
-              <span style={{ color: '#ffffff', letterSpacing: '2px', fontWeight: 'bold', fontSize: '0.8rem' }}>CROWD METRICS</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="flex-between">
-                <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.max_people_count ?? "--"}</span>
-              </div>
-              <div className="flex-between">
-                <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_density_level ?? "--"}</span>
-              </div>
-              <div className="flex-between">
-                <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score != null? analysisResult.final_motion_score.toFixed(2): "--"}</span>
-              </div>
-              <div
-              style={{
-              marginTop:"1rem",
-              height:"60px"
-              }}
-              >
-
-              <svg
-              viewBox="0 0 200 40"
-              style={{
-              width:"100%",
-              height:"100%"
-              }}
-              preserveAspectRatio="none"
-              >
-
-              <polyline
-              points={generatePeoplePoints()}
-              fill="none"
-              stroke="#22c55e"
-              strokeWidth="2.5"
-              />
-
-              </svg>
-
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* MOTION PULSE */}
         <div
@@ -611,8 +553,7 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-
-          {/* ALERT LOG */}
+        {/* ALERT LOG */}
           <div
             style={{
               backgroundColor: "#0d1114",
@@ -766,8 +707,9 @@ export default function Dashboard() {
               </div>
 
             )}
-          </div>
         </div>
+      </div>
+    </div>
       
 
       <style>{`
