@@ -1,53 +1,143 @@
-import React from 'react';
-import { Download } from 'lucide-react';
+import React,{
+useEffect,
+useState
+}
+from "react";
 
-export default function Analytics() {
-    return (
-        <div>
-            <div className="flex-between" style={{ marginBottom: '2rem' }}>
-                <div>
-                    <h1 style={{ margin: 0 }}>Analytics & Reports</h1>
-                    <p style={{ margin: '0.5rem 0 0 0' }}>Historical data, trends, and risk assessments.</p>
-                </div>
-                <button className="btn-primary">
-                    <Download size={18} /> Export Data
-                </button>
-            </div>
+import AnalyticsCharts from "../analytics/AnalyticsCharts";
 
-            <div className="grid-layout">
-                <div className="panel" style={{ minHeight: '400px', gridColumn: '1 / -1' }}>
-                    <h3>Weekly Peak Density Trends</h3>
-                    <div className="flex-center" style={{ height: '300px', color: 'var(--text-secondary)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 'var(--radius)' }}>
-                        [ Main Chart Area Placeholder ]
-                    </div>
-                </div>
+import {getAnalytics}
+from "../services/analyticsService";
 
-                <div className="panel">
-                    <h3>High Risk Zones</h3>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0 0' }}>
-                        <li className="flex-between" style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <span>Main Entrance</span>
-                            <span style={{ color: 'var(--accent-yellow)', fontWeight: 'bold' }}>42 Incidents</span>
-                        </li>
-                        <li className="flex-between" style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <span>Food Court</span>
-                            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>18 Incidents</span>
-                        </li>
-                        <li className="flex-between" style={{ padding: '0.75rem 0' }}>
-                            <span>South Exit</span>
-                            <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>5 Incidents</span>
-                        </li>
-                    </ul>
-                </div>
+export default function Analytics(){
 
-                <div className="panel">
-                    <h3>Average Clear Time</h3>
-                    <div className="flex-center" style={{ height: '100%', flexDirection: 'column' }}>
-                        <h1 style={{ margin: 0, fontSize: '3rem', color: 'var(--accent-yellow)' }}>4.5</h1>
-                        <p>Minutes</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+const [analytics,setAnalytics]=useState(null);
+
+useEffect(()=>{
+
+loadAnalytics();
+
+},[]);
+
+async function loadAnalytics(){
+
+const data=await getAnalytics();
+
+setAnalytics(data);
+
+}
+
+if(!analytics){
+
+return(
+<div style={{padding:"40px"}}>
+Loading Analytics...
+</div>
+);
+
+}
+
+const chartData=analytics.snapshots
+
+.slice()
+
+.reverse()
+
+.map((item,index)=>({
+
+frame:index+1,
+
+people:item.people_count,
+
+density:item.density_score,
+
+motion:item.motion_score,
+
+risk:
+item.risk_level==="HIGH RISK"
+?3
+:item.risk_level==="WARNING"
+?2
+:1
+
+}));
+
+return(
+
+<div>
+
+<h1>Analytics Dashboard</h1>
+
+<p>
+Historical AI analytics from processed videos.
+</p>
+
+<div
+style={{
+
+display:"grid",
+
+gridTemplateColumns:"1fr 1fr",
+
+gap:"20px",
+
+marginTop:"30px"
+
+}}
+>
+
+<AnalyticsCharts
+
+title="Crowd Count Trend"
+
+data={chartData}
+
+dataKey="people"
+
+color="#22c55e"
+
+/>
+
+<AnalyticsCharts
+
+title="Density Trend"
+
+data={chartData}
+
+dataKey="density"
+
+color="#3b82f6"
+
+/>
+
+<AnalyticsCharts
+
+title="Motion Trend"
+
+data={chartData}
+
+dataKey="motion"
+
+color="#f59e0b"
+
+/>
+
+<AnalyticsCharts
+
+title="Risk Timeline"
+
+data={chartData}
+
+dataKey="risk"
+
+color="#ef4444"
+
+/>
+
+</div>
+
+</div>
+
+);
+
 }
