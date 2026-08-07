@@ -32,8 +32,30 @@
     margin:18px 0;
 }
 
-.processing-overlay p{
-    margin:8px 0;
-    color:#d1d5db;
-    font-size:1rem;
+.processing-overlay{
+    position:absolute;
+    right:20px;
+    bottom:20px;
+
+    width:260px;
+
+    padding:18px;
+
+    border-radius:14px;
+
+    background:rgba(10,15,20,.85);
+
+    backdrop-filter:blur(10px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    z-index:100;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
 }

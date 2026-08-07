@@ -82,7 +82,7 @@ def upload_video():
 
     frame_index = 0
     processed_count = 0
-    FRAME_STREAM_INTERVAL = 5
+    FRAME_STREAM_INTERVAL = 3
     people_counts = []
     motion_history = []
     density_history = []

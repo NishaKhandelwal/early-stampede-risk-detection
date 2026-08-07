@@ -9,6 +9,18 @@ const socket = io("http://localhost:5000/dashboard", {
 socket.connect();
 socket.on("connect", () => {
     console.log("✅ Socket Connected");
+    console.log("Socket ID:", socket.id);
+});
+socket.io.on("reconnect", attempt => {
+    console.log(`Reconnected after ${attempt} attempts`);
+});
+
+socket.io.on("reconnect_attempt", attempt => {
+    console.log(`Reconnect attempt ${attempt}`);
+});
+
+socket.io.on("reconnect_error", err => {
+    console.error("Reconnect Error", err);
 });
 
 socket.on("disconnect", () => {

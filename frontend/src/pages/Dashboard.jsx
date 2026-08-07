@@ -3,6 +3,7 @@ import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, Shi
 import "./Dashboard.css";
 import { useAlertContext } from "../context/AlertContext";
 import { uploadVideo } from "../services/detectionService";
+import socket from "../services/websocket";
 export default function Dashboard() {
   const { dashboardData } = useAlertContext();
   const [showAlert, setShowAlert] = useState(false);
@@ -11,7 +12,96 @@ export default function Dashboard() {
   const [processedVideo, setProcessedVideo] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [analysisResult,setAnalysisResult]=useState(null);
+  const [liveFrame, setLiveFrame] = useState(null);
   const audioCtxRef = useRef(null);
+  useEffect(() => {
+
+      socket.connect();
+
+      socket.on("dashboard_update", (data) => {
+
+          setAnalysisResult((prev) => ({
+
+              ...(prev || {}),
+
+              max_people_count:
+                  data.current?.people_count ??
+                  data.people_count,
+
+              final_density_level:
+                  data.current?.density_level ??
+                  data.density_level,
+
+              final_motion_level:
+                  data.current?.motion_level ??
+                  data.motion_level,
+
+              final_risk_level:
+                  data.current?.risk_level ??
+                  data.risk_level,
+
+              final_motion_score:
+                  data.motion_score,
+
+              risk_message:
+                  data.risk_message,
+
+              people_history:
+                  data.history?.people ??
+                  prev?.people_history ??
+                  [],
+
+              density_history:
+                  data.history?.density ??
+                  prev?.density_history ??
+                  [],
+
+              motion_history:
+                  data.history?.motion ??
+                  prev?.motion_history ??
+                  [],
+
+          }));
+
+      });
+
+      socket.on("live_frame", (frame) => {
+
+          setLiveFrame(
+              `data:image/jpeg;base64,${frame.image}`
+          );
+
+      });
+
+      socket.on("new_alert", (alert) => {
+
+          triggerAlert(alert.camera_id);
+
+      });
+
+      socket.on("processing_complete", (data) => {
+
+          console.log("Finished:", data.camera_id);
+
+          setProcessing(false);
+
+      });
+
+      return () => {
+
+          socket.off("dashboard_update");
+
+          socket.off("live_frame");
+
+          socket.off("new_alert");
+
+          socket.off("processing_complete");
+
+          socket.disconnect();
+
+      };
+
+  }, []);
   
   const handleVideoUpload = async (e) => {
 
@@ -282,39 +372,121 @@ export default function Dashboard() {
             )}
             {videoSource ? (
               <>
-                <video
-                  src={processedVideo || videoSource}
-                  autoPlay
-                  loop
-                  muted
-                  controls
+                <div
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "cover",
+                    position: "relative",
+                    overflow: "hidden",
                   }}
-                />
+                >
+                  {/* Background Video */}
+                  <video
+                    src={processedVideo || videoSource}
+                    autoPlay
+                    loop
+                    muted
+                    controls
+                    style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        filter: "brightness(0.82)",
+                    }}
+                  />
 
-                {processing && (
-                  <div className="processing-overlay">
-                    <div
+                  {/* Live AI Overlay */}
+                  {processing && liveFrame && (
+                    <img
+                      key={liveFrame}
+                      src={liveFrame}
+                      alt="Live AI Overlay"
                       style={{
-                        width: "60px",
-                        height: "60px",
-                        border: "5px solid rgba(255,255,255,0.2)",
-                        borderTop: "5px solid #00e5ff",
-                        borderRadius: "50%",
-                        animation: "spin 1s linear infinite",
-                        marginBottom: "1rem",
+                          position: "absolute",
+                          inset: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          pointerEvents: "none",
+                          opacity: 1,
+                          transition: "opacity 80ms linear",
+                          willChange: "opacity",
                       }}
                     />
+                  )}
+                </div>
 
-                    <h2>AI Processing...</h2>
+                {processing && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "20px",
+                      right: "20px",
+                      width: "260px",
+                      padding: "16px",
+                      background: "rgba(15, 23, 42, 0.55)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "12px",
+                      color: "#fff",
+                      zIndex: 20,
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          border: "3px solid rgba(255,255,255,0.2)",
+                          borderTop: "3px solid #00e5ff",
+                          borderRadius: "50%",
+                          animation: "spin 0.9s linear infinite",
+                        }}
+                      />
 
-                    <p>👤 Detecting Crowd</p>
-                    <p>📊 Estimating Density</p>
-                    <p>🏃 Motion Analysis</p>
-                    <p>⚠ Risk Assessment</p>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "15px",
+                          }}
+                        >
+                          AI Processing
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#94a3b8",
+                          }}
+                        >
+                          Live analysis running
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <div>👤 Detecting Crowd</div>
+                      <div>📊 Density Analysis</div>
+                      <div>🏃 Motion Analysis</div>
+                      <div>⚠ Risk Assessment</div>
+                    </div>
                   </div>
                 )}
               </>
