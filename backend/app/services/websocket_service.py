@@ -15,14 +15,18 @@ socketio = SocketIO(
     ping_interval=25,
     ping_timeout=60,
 )
-
+connected_dashboards = 0
 @socketio.on("connect", namespace="/dashboard")
 def dashboard_connect():
-    print("Dashboard Connected")
+    global connected_dashboards
+    connected_dashboards += 1
+    print(f"Dashboard Connected ({connected_dashboards})")
 
 @socketio.on("disconnect", namespace="/dashboard")
 def dashboard_disconnect():
-    print("Dashboard Disconnected")
+    global connected_dashboards
+    connected_dashboards -= 1
+    print(f"Dashboard Disconnected ({connected_dashboards})")
 
 def emit_dashboard_update(data):
     """
@@ -31,14 +35,26 @@ def emit_dashboard_update(data):
     socketio.emit(
         "dashboard_update",
         data,
-        namespace="/dashboard"
+        namespace="/dashboard",
+        callback=lambda: print("Dashboard update delivered"),
     )
 def emit_live_frame(camera_id, frame):
     """
     Sends an annotated frame to all connected dashboard clients.
     """
+    if connected_dashboards == 0:
+        return
 
-    success, buffer = cv2.imencode(".jpg", frame)
+    encode_param = [
+        int(cv2.IMWRITE_JPEG_QUALITY),
+        65,
+    ]
+
+    success, buffer = cv2.imencode(
+        ".jpg",
+        frame,
+        encode_param,
+    )
 
     if not success:
         return
@@ -51,7 +67,8 @@ def emit_live_frame(camera_id, frame):
             "camera_id": camera_id,
             "image": frame_b64,
         },
-        namespace="/dashboard"
+        namespace="/dashboard",
+        callback=lambda: print("Dashboard update delivered"),
     )
     
 def emit_processing_complete(camera_id):
@@ -62,6 +79,7 @@ def emit_processing_complete(camera_id):
             "camera_id": camera_id,
         },
         namespace="/dashboard",
+        callback=lambda: print("Dashboard update delivered"),
     )
 def emit_new_alert(alert):
     """
@@ -70,5 +88,6 @@ def emit_new_alert(alert):
     socketio.emit(
         "new_alert",
         alert,
-        namespace="/dashboard"
+        namespace="/dashboard",
+        callback=lambda: print("Dashboard update delivered"),
     )
