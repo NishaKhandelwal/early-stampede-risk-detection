@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, ShieldCheck } from 'lucide-react';
 import "./Dashboard.css";
+import { useAlertContext } from "../context/AlertContext";
 import { uploadVideo } from "../services/detectionService";
 export default function Dashboard() {
+  const { dashboardData } = useAlertContext();
   const [showAlert, setShowAlert] = useState(false);
   const [videoSource, setVideoSource] = useState(null);
   const [alertSector, setAlertSector] = useState(null);
@@ -233,6 +235,7 @@ export default function Dashboard() {
       
     
       <div className="dashboard-layout">
+
         {/* LEFT */}
         {/* Main Live Camera Focus */}
         <div className="panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
