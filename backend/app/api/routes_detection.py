@@ -11,11 +11,16 @@ Endpoints:
 """
 
 import os
-from unittest import result
+from app.utils.dashboard_payload import create_dashboard_payload
 import cv2
 import time
 from flask import Blueprint, request, jsonify
-
+from app.services.websocket_service import (
+    emit_dashboard_update,
+    emit_live_frame,
+    emit_processing_complete,
+    emit_new_alert,
+)
 from app.utils.config import (
     allowed_video_file,
     allowed_image_file,
@@ -77,6 +82,7 @@ def upload_video():
 
     frame_index = 0
     processed_count = 0
+    FRAME_STREAM_INTERVAL = 5
     people_counts = []
     motion_history = []
     density_history = []
@@ -99,8 +105,27 @@ def upload_video():
         people_counts.append(result["people_count"])
         motion_history.append(result["motion_score"] or 0)
         density_history.append(result["density_score"])
+        history = {
+            "people": people_counts[-30:],
+            "density": density_history[-30:],
+            "motion": motion_history[-30:],
+        }
         last_result = result
+        emit_dashboard_update(
+            create_dashboard_payload(
+                result,
+                history=history
+            )
+        )
         writer.write(result["annotated_frame"])
+        if (
+            processed_count % FRAME_STREAM_INTERVAL == 0
+            and result["annotated_frame"] is not None
+        ):
+            emit_live_frame(
+                camera_id,
+                result["annotated_frame"]
+            )
 
         save_analytics_snapshot(
             camera_id=camera_id,
@@ -121,6 +146,17 @@ def upload_video():
                 density_level=result["density_level"],
                 motion_level=result["motion_level"],
             )
+            alert = {
+                "camera_id": camera_id,
+                "risk_level": result["risk_level"],
+                "message": result["risk_message"],
+                "people_count": result["people_count"],
+                "density_level": result["density_level"],
+                "motion_level": result["motion_level"],
+            }
+
+            emit_new_alert(alert)
+            
             risk_events.append({
                 "frame": frame_index,
                 "risk_level": result["risk_level"],
@@ -129,12 +165,13 @@ def upload_video():
 
     cap.release()
     writer.release()
+    emit_processing_complete(camera_id)
     os.remove(saved_path)  # cleanup - don't keep uploaded videos around
 
     if processed_count == 0:
         print(f"Total processing time: {time.time()-start_time:.2f} sec")
         return jsonify({"error": "No frames could be processed from this video"}), 400
-    processed_video_url = f"http://127.0.0.1:5000/outputs/{output_filename}"
+    
 
     summary = {
         "camera_id": camera_id,
@@ -160,9 +197,7 @@ def upload_video():
         "risk_message": last_result["risk_message"],
         "risk_events": risk_events,
     }
-    summary["processed_video"] = (
-        f"http://127.0.0.1:5000/outputs/{output_filename}"
-    )
+    
     return jsonify(summary), 200
 
 
@@ -217,6 +252,16 @@ def process_frame():
             density_level=result["density_level"],
             motion_level=result["motion_level"],
         )
+        alert = {
+            "camera_id": camera_id,
+            "risk_level": result["risk_level"],
+            "message": result["risk_message"],
+            "people_count": result["people_count"],
+            "density_level": result["density_level"],
+            "motion_level": result["motion_level"],
+        }
+
+        emit_new_alert(alert)
 
     save_analytics_snapshot(
         camera_id=camera_id,

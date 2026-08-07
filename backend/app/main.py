@@ -16,7 +16,7 @@ from flask_cors import CORS
 from app.api.routes_files import files_bp
 from app.core.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG, MAX_CONTENT_LENGTH
 from app.database.db import init_db
-
+from app.services.websocket_service import socketio
 from app.api.routes_detection import detection_bp
 from app.api.routes_alerts import alerts_bp
 from app.api.routes_analytics import analytics_bp
@@ -49,4 +49,12 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+    socketio.init_app(app)
+
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=True,
+        allow_unsafe_werkzeug=True,
+    )
