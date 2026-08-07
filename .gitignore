@@ -1,11 +1,6 @@
 # Node
 node_modules/
 
-# Python
-venv/
-__pycache__/
-*.pyc
-
 # Environment files
 .env
 frontend/.env
@@ -15,3 +10,19 @@ frontend/.env
 
 # Logs
 *.log
+# --------------------------
+# Python
+# --------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
