@@ -12,6 +12,7 @@ A registry (_active_streams) tracks all currently-running streams
 so API routes can start/stop them by camera_id.
 """
 
+from platform import processor
 import threading
 import time
 
@@ -57,90 +58,139 @@ class FrameProcessor(threading.Thread):
         reset_motion_service(self.camera_id)
 
         if not self.camera.connect():
-            logger.error(f"[{self.camera_id}] Could not start stream - connection failed")
+            logger.error(
+                f"[{self.camera_id}] Could not start stream - connection failed"
+            )
             return
 
         frame_index = 0
-        logger.info(f"[{self.camera_id}] Stream processing started")
 
-        while not self.stop_flag.is_set():
-            frame = self.camera.read_frame()
+        logger.info(
+            f"[{self.camera_id}] Stream processing started"
+        )
 
-            if frame is None:
+        try:
 
-            # Uploaded videos finish naturally.
-            # RTSP/webcam streams should keep retrying.
-                if self.source_type == "video":
-                    logger.info(f"[{self.camera_id}] Video processing completed")
+            while not self.stop_flag.is_set():
 
-                    # (We'll implement this websocket event later)
-                    emit_processing_complete({"camera_id": self.camera_id})
+                frame = self.camera.read_frame()
 
-                    break
+                if frame is None:
 
-                time.sleep(1)
-                continue
+                    # Uploaded videos finish naturally.
+                    if self.source_type == "video":
+                        logger.info(
+                            f"[{self.camera_id}] Video processing completed"
+                        )
 
-            frame_index += 1
-            if frame_index % self.process_every_n != 0:
-                continue  # skip this frame, just keep the stream moving
+                        emit_processing_complete({
+                            "camera_id": self.camera_id
+                        })
 
-            try:
-                result = run_pipeline_on_frame(frame, camera_id=self.camera_id, annotate=True)
-                annotated_frame = result.get("annotated_frame")
-                if annotated_frame is not None:
-                    emit_live_frame(
-                        self.camera_id,
-                        annotated_frame,
+                        break
+
+                    # RTSP/webcam streams should keep retrying.
+                    time.sleep(1)
+                    continue
+
+                frame_index += 1
+
+                # Process only every Nth frame.
+                if frame_index % self.process_every_n != 0:
+                    continue
+
+                try:
+
+                    result = run_pipeline_on_frame(
+                        frame,
+                        camera_id=self.camera_id,
+                        annotate=True,
                     )
-            except Exception as e:
-                logger.error(f"[{self.camera_id}] Pipeline error: {e}")
-                continue
 
-            # Log every processed frame for analytics/trend charts
-            save_analytics_snapshot(
-                camera_id=self.camera_id,
-                people_count=result["people_count"],
-                density_score=result["density_score"],
-                density_level=result["density_level"],
-                motion_score=result["motion_score"],
-                motion_level=result["motion_level"],
-                risk_level=result["risk_level"],
-            )
-            emit_dashboard_update({
-                "camera_id": self.camera_id,
-                "people_count": result["people_count"],
-                "density_score": result["density_score"],
-                "density_level": result["density_level"],
-                "motion_score": result["motion_score"],
-                "motion_level": result["motion_level"],
-                "risk_level": result["risk_level"],
-                "timestamp": result.get("timestamp"),
-            })
+                    annotated_frame = result.get("annotated_frame")
 
-            # Only log an ALERT row when risk is WARNING or HIGH RISK
-            if result["risk_level"] in ALERTABLE_RISK_LEVELS:
-                save_alert(
+                    if annotated_frame is not None:
+                        emit_live_frame(
+                            self.camera_id,
+                            annotated_frame,
+                        )
+
+                except Exception as e:
+
+                    logger.error(
+                        f"[{self.camera_id}] Pipeline error: {e}"
+                    )
+
+                    continue
+
+                # --------------------------------------------------
+                # Analytics
+                # --------------------------------------------------
+
+                save_analytics_snapshot(
                     camera_id=self.camera_id,
-                    risk_level=result["risk_level"],
-                    message=result["risk_message"],
                     people_count=result["people_count"],
+                    density_score=result["density_score"],
                     density_level=result["density_level"],
+                    motion_score=result["motion_score"],
                     motion_level=result["motion_level"],
+                    risk_level=result["risk_level"],
                 )
-                emit_new_alert({
+
+                emit_dashboard_update({
                     "camera_id": self.camera_id,
-                    "risk_level": result["risk_level"],
-                    "message": result["risk_message"],
                     "people_count": result["people_count"],
+                    "density_score": result["density_score"],
                     "density_level": result["density_level"],
+                    "motion_score": result["motion_score"],
                     "motion_level": result["motion_level"],
+                    "risk_level": result["risk_level"],
+                    "timestamp": result.get("timestamp"),
                 })
 
-        self.camera.release()
-        logger.info(f"[{self.camera_id}] Stream processing stopped")
+                # --------------------------------------------------
+                # Alerts
+                # --------------------------------------------------
 
+                if result["risk_level"] in ALERTABLE_RISK_LEVELS:
+
+                    save_alert(
+                        camera_id=self.camera_id,
+                        risk_level=result["risk_level"],
+                        message=result["risk_message"],
+                        people_count=result["people_count"],
+                        density_level=result["density_level"],
+                        motion_level=result["motion_level"],
+                    )
+
+                    emit_new_alert({
+                        "camera_id": self.camera_id,
+                        "risk_level": result["risk_level"],
+                        "message": result["risk_message"],
+                        "people_count": result["people_count"],
+                        "density_level": result["density_level"],
+                        "motion_level": result["motion_level"],
+                    })
+
+        except Exception as e:
+
+            logger.exception(
+                f"[{self.camera_id}] Unexpected stream processing error: {e}"
+            )
+
+        finally:
+
+            self.camera.release()
+
+            # Remove this processor from the active registry
+            # when the thread finishes naturally or is stopped.
+            _active_streams.pop(self.camera_id, None)
+
+            logger.info(
+                f"[{self.camera_id}] Stream processing stopped"
+            )
     def stop(self):
+        """Request the background stream-processing thread to stop."""
         self.stop_flag.set()
 
 
@@ -149,21 +199,24 @@ def start_stream(camera_id, source_url, source_type="rtsp", process_every_n=3):
         return False, "Stream with this camera_id is already running"
 
     processor = FrameProcessor(camera_id, source_url, source_type=source_type, process_every_n=process_every_n)
-    processor.start()
-
     _active_streams[camera_id] = processor
+    processor.start()   
     return True, "Stream started"
 
 
 def stop_stream(camera_id):
     processor = _active_streams.get(camera_id)
+
     if not processor:
         return False, "No active stream with this camera_id"
 
     processor.stop()
-    del _active_streams[camera_id]
+
+    if processor.is_alive():
+        processor.join(timeout=2)
+
+    _active_streams.pop(camera_id, None)
+
     return True, "Stream stopped"
-
-
 def get_active_streams():
     return list(_active_streams.keys())

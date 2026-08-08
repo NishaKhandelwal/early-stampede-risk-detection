@@ -4,48 +4,42 @@ import socket from "../services/websocket";
 const AlertContext = createContext();
 
 export function AlertProvider({ children }) {
-
     const [dashboardData, setDashboardData] = useState(null);
-
     const [alerts, setAlerts] = useState([]);
 
     useEffect(() => {
-
         socket.connect();
 
-        socket.on("dashboard_update", (data) => {
-
+        const handleDashboardUpdate = (data) => {
+            console.log("Dashboard Update:", data);
             setDashboardData(data);
-
-        });
-
-        socket.on("new_alert", (alert) => {
-
-            setAlerts(prev => [alert, ...prev]);
-
-        });
-
-        return () => {
-
-            socket.off("dashboard_update");
-
-            socket.off("new_alert");
-
-            socket.disconnect();
-
         };
 
+        const handleNewAlert = (alert) => {
+            console.log("New Alert:", alert);
+            setAlerts((prev) => [alert, ...prev]);
+        };
+
+        socket.on("dashboard_update", handleDashboardUpdate);
+        socket.on("new_alert", handleNewAlert);
+
+        return () => {
+            socket.off("dashboard_update", handleDashboardUpdate);
+            socket.off("new_alert", handleNewAlert);
+
+            socket.disconnect();
+        };
     }, []);
 
     return (
-
-        <AlertContext.Provider value={{
-            dashboardData,
-            alerts
-        }}>
+        <AlertContext.Provider
+            value={{
+                dashboardData,
+                alerts,
+            }}
+        >
             {children}
         </AlertContext.Provider>
-
     );
 }
 

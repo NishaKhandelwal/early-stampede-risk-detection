@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+
 import { LayoutDashboard, Video, AlertTriangle, BarChart2, Menu } from 'lucide-react';
 
 export default function Sidebar({ isExpanded, toggleSidebar }) {
@@ -8,6 +9,7 @@ export default function Sidebar({ isExpanded, toggleSidebar }) {
         { name: 'Live Monitoring', path: '/monitoring', icon: Video },
         { name: 'Alerts', path: '/alerts', icon: AlertTriangle },
         { name: 'Analytics', path: '/analytics', icon: BarChart2 },
+        { name: 'Cameras', path: '/cameras', icon: Video }
     ];
 
     return (
