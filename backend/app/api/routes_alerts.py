@@ -1,29 +1,91 @@
 """
-api/routes_alerts.py
+app/api/routes_alerts.py
 Author : Rishika
 
-Endpoint:
-    GET /alerts   - returns recent WARNING / HIGH RISK events
+Alert history API.
 
-Query params (all optional):
-    limit        - max number of alerts to return (default 50)
-    risk_level   - filter to only "WARNING" or "HIGH RISK"
+Endpoint:
+GET /alerts
+
+Query params:
+limit       - number of recent alerts to return (default 50, max 1000)
+risk_level  - optional filter: WARNING or HIGH RISK
 """
 
 from flask import Blueprint, request, jsonify
+
 from app.database.db import get_alerts
+
 
 alerts_bp = Blueprint("alerts_bp", __name__)
 
 
 @alerts_bp.route("/alerts", methods=["GET"])
 def list_alerts():
+    """
+    Return recent alert history.
+
+    Examples:
+        GET /alerts
+        GET /alerts?limit=20
+        GET /alerts?risk_level=WARNING
+        GET /alerts?risk_level=HIGH%20RISK&limit=10
+    """
+
     limit = request.args.get("limit", default=50, type=int)
     risk_level = request.args.get("risk_level", default=None, type=str)
 
-    alerts = get_alerts(limit=limit, risk_level=risk_level)
+    # -----------------------------------------------------------
+    # Validate limit
+    # -----------------------------------------------------------
+
+    if limit is None:
+        return jsonify({
+            "success": False,
+            "error": "limit must be an integer"
+        }), 400
+
+    if limit < 1:
+        return jsonify({
+            "success": False,
+            "error": "limit must be a positive integer"
+        }), 400
+
+    if limit > 1000:
+        return jsonify({
+            "success": False,
+            "error": "limit cannot exceed 1000"
+        }), 400
+
+    # -----------------------------------------------------------
+    # Validate risk level
+    # -----------------------------------------------------------
+
+    if risk_level is not None:
+        risk_level = risk_level.strip().upper()
+
+        allowed_risk_levels = {
+            "WARNING",
+            "HIGH RISK",
+        }
+
+        if risk_level not in allowed_risk_levels:
+            return jsonify({
+                "success": False,
+                "error": "risk_level must be WARNING or HIGH RISK"
+            }), 400
+
+    # -----------------------------------------------------------
+    # Fetch alerts
+    # -----------------------------------------------------------
+
+    alerts = get_alerts(
+        limit=limit,
+        risk_level=risk_level,
+    )
 
     return jsonify({
+        "success": True,
         "count": len(alerts),
-        "alerts": alerts
+        "alerts": alerts,
     }), 200

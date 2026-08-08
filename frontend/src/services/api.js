@@ -48,5 +48,57 @@ export const uploadVideo = async (videoFile) => {
 
     return response.data;
 };
+export const getCameras = async () => {
+    const response = await api.get("/stream/status");
+    return response.data;
+};
+
+export const getCameraStatus = async (cameraId) => {
+    const response = await api.get(
+        `/stream/status/${encodeURIComponent(cameraId)}`
+    );
+
+    return response.data;
+};
+
+export const registerCamera = async ({
+    camera_id,
+    source_url,
+    source_type = "rtsp",
+    process_every_n = 3,
+}) => {
+    const response = await api.post("/stream/register", {
+        camera_id,
+        source_url,
+        source_type,
+        process_every_n,
+    });
+
+    return response.data;
+};
+
+export const startCamera = async (cameraId) => {
+    const response = await api.post("/stream/start", {
+        camera_id: cameraId,
+    });
+
+    return response.data;
+};
+
+export const stopCamera = async (cameraId) => {
+    const response = await api.post("/stream/stop", {
+        camera_id: cameraId,
+    });
+
+    return response.data;
+};
+
+export const removeCamera = async (cameraId) => {
+    const response = await api.delete(
+        `/stream/${encodeURIComponent(cameraId)}`
+    );
+
+    return response.data;
+};
 
 export default api;

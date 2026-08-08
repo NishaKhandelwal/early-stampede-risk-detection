@@ -1,11 +1,7 @@
-const API = "http://127.0.0.1:5000";
+import api from "./api";
 
 export async function getAnalytics() {
-    const res = await fetch(`${API}/analytics`);
+    const response = await api.get("/analytics");
 
-    if (!res.ok) {
-        throw new Error("Failed to load analytics");
-    }
-
-    return await res.json();
+    return response.data;
 }

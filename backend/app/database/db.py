@@ -138,18 +138,20 @@ def get_analytics_summary(camera_id=None, limit=200):
             SELECT *
             FROM analytics
             WHERE camera_id = ?
-            ORDER BY id ASC
+            ORDER BY id DESC
             LIMIT ?
         """, (camera_id, limit))
     else:
         cur.execute("""
             SELECT *
             FROM analytics
-            ORDER BY id ASC
+            ORDER BY id DESC
             LIMIT ?
         """, (limit,))
 
+    # Reverse so frontend receives oldest -> newest.
     rows = [dict(row) for row in cur.fetchall()]
+    rows.reverse()
 
     conn.close()
 
@@ -190,7 +192,7 @@ def get_analytics_summary(camera_id=None, limit=200):
 
     for row in rows:
 
-        timestamp = row["timestamp"][11:19]
+        timestamp = row["timestamp"]
 
         people = row["people_count"] or 0
         density = row["density_score"] or 0
@@ -225,7 +227,6 @@ def get_analytics_summary(camera_id=None, limit=200):
             risk_breakdown[risk] += 1
 
     return {
-
         "snapshots": rows,
 
         "people_history": people_history,
@@ -237,17 +238,23 @@ def get_analytics_summary(camera_id=None, limit=200):
         "risk_timeline": risk_timeline,
 
         "summary": {
-
-            "avg_people": round(sum(people_values) / len(people_values), 2),
+            "avg_people": round(
+                sum(people_values) / len(people_values),
+                2
+            ),
 
             "max_people": max(people_values),
 
-            "avg_density": round(sum(density_values) / len(density_values), 3),
+            "avg_density": round(
+                sum(density_values) / len(density_values),
+                3
+            ),
 
-            "avg_motion": round(sum(motion_values) / len(motion_values), 3),
-
+            "avg_motion": round(
+                sum(motion_values) / len(motion_values),
+                3
+            ),
         },
 
         "risk_breakdown": risk_breakdown
-
     }

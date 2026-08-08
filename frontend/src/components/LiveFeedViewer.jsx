@@ -34,7 +34,7 @@ function LiveFeedViewer({ cameraId }) {
             socket.off("live_frame", handleFrame);
             socket.off("processing_complete", handleComplete);
         };
-    }, []);
+    }, [cameraId]);
 
     return (
         <div
