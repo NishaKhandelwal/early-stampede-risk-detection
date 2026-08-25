@@ -12,96 +12,72 @@ export default function Dashboard() {
   const [processedVideo, setProcessedVideo] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [analysisResult,setAnalysisResult]=useState(null);
-  const [liveFrame, setLiveFrame] = useState(null);
+  //const [liveFrame, setLiveFrame] = useState(null);
   const audioCtxRef = useRef(null);
   useEffect(() => {
+    if (!dashboardData) return;
 
-      socket.connect();
+    const data = dashboardData;
 
-      socket.on("dashboard_update", (data) => {
+    setAnalysisResult((prev) => ({
+        ...(prev || {}),
 
-          setAnalysisResult((prev) => ({
+        max_people_count:
+            data.current?.people_count ??
+            data.people_count ??
+            prev?.max_people_count ??
+            0,
 
-              ...(prev || {}),
+        final_density_level:
+            data.current?.density_level ??
+            data.density_level ??
+            prev?.final_density_level ??
+            "LOW",
 
-              max_people_count:
-                  data.current?.people_count ??
-                  data.people_count,
+        final_motion_level:
+            data.current?.motion_level ??
+            data.motion_level ??
+            prev?.final_motion_level ??
+            "LOW",
 
-              final_density_level:
-                  data.current?.density_level ??
-                  data.density_level,
+        final_risk_level:
+            data.current?.risk_level ??
+            data.risk_level ??
+            prev?.final_risk_level ??
+            "LOW",
 
-              final_motion_level:
-                  data.current?.motion_level ??
-                  data.motion_level,
+        final_motion_score:
+            data.motion_score ??
+            data.current?.motion_score ??
+            prev?.final_motion_score ??
+            0,
 
-              final_risk_level:
-                  data.current?.risk_level ??
-                  data.risk_level,
+        risk_message:
+            data.risk_message ??
+            data.current?.risk_message ??
+            prev?.risk_message,
 
-              final_motion_score:
-                  data.motion_score,
+        people_history:
+            data.history?.people ??
+            prev?.people_history ??
+            [],
 
-              risk_message:
-                  data.risk_message,
+        density_history:
+            data.history?.density ??
+            prev?.density_history ??
+            [],
 
-              people_history:
-                  data.history?.people ??
-                  prev?.people_history ??
-                  [],
+        motion_history:
+            data.history?.motion ??
+            prev?.motion_history ??
+            [],
 
-              density_history:
-                  data.history?.density ??
-                  prev?.density_history ??
-                  [],
-
-              motion_history:
-                  data.history?.motion ??
-                  prev?.motion_history ??
-                  [],
-
-          }));
-
-      });
-
-      socket.on("live_frame", (frame) => {
-
-          setLiveFrame(
-              `data:image/jpeg;base64,${frame.image}`
-          );
-
-      });
-
-      socket.on("new_alert", (alert) => {
-
-          triggerAlert(alert.camera_id);
-
-      });
-
-      socket.on("processing_complete", (data) => {
-
-          console.log("Finished:", data.camera_id);
-
-          setProcessing(false);
-
-      });
-
-      return () => {
-
-          socket.off("dashboard_update");
-
-          socket.off("live_frame");
-
-          socket.off("new_alert");
-
-          socket.off("processing_complete");
-
-          socket.disconnect();
-
-      };
-
-  }, []);
+        risk_events:
+            data.risk_events ??
+            prev?.risk_events ??
+            [],
+    }));
+}, [dashboardData]);
   
   const handleVideoUpload = async (e) => {
 

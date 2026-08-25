@@ -12,7 +12,7 @@ A registry (_active_streams) tracks all currently-running streams
 so API routes can start/stop them by camera_id.
 """
 
-from platform import processor
+
 import threading
 import time
 
@@ -194,13 +194,37 @@ class FrameProcessor(threading.Thread):
         self.stop_flag.set()
 
 
-def start_stream(camera_id, source_url, source_type="rtsp", process_every_n=3):
+def start_stream(
+    camera_id,
+    source_url,
+    source_type="rtsp",
+    process_every_n=3
+):
+
     if camera_id in _active_streams:
         return False, "Stream with this camera_id is already running"
 
-    processor = FrameProcessor(camera_id, source_url, source_type=source_type, process_every_n=process_every_n)
+    logger.info(
+        f"[{camera_id}] Starting stream | "
+        f"type={source_type} | "
+        f"source={source_url}"
+    )
+
+    processor = FrameProcessor(
+        camera_id,
+        source_url,
+        source_type=source_type,
+        process_every_n=process_every_n
+    )
+
     _active_streams[camera_id] = processor
-    processor.start()   
+
+    processor.start()
+
+    logger.info(
+        f"[{camera_id}] Processor thread started"
+    )
+
     return True, "Stream started"
 
 

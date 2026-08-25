@@ -44,13 +44,32 @@ class RTSPCamera:
         self.cap = None
 
     def connect(self):
-        self.cap = cv2.VideoCapture(self.source_url)
-        if not self.cap.isOpened():
-            logger.warning(f"[{self.camera_id}] Could not open source: {self.source_url}")
-            return False
-        logger.info(f"[{self.camera_id}] Connected to {self.source_url}")
-        return True
+        try:
+            if isinstance(self.source_url, int):
+                self.cap = cv2.VideoCapture(
+                    self.source_url,
+                    cv2.CAP_DSHOW
+                )
+            else:
+                self.cap = cv2.VideoCapture(self.source_url)
 
+            if not self.cap.isOpened():
+                logger.warning(
+                    f"[{self.camera_id}] Could not open source: {self.source_url}"
+                )
+                return False
+
+            logger.info(
+                f"[{self.camera_id}] Connected to {self.source_url}"
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"[{self.camera_id}] Camera connection error: {e}"
+            )
+            return False
     def is_connected(self):
         return self.cap is not None and self.cap.isOpened()
 
@@ -77,16 +96,48 @@ class RTSPCamera:
 
     def _reconnect(self):
         for attempt in range(1, self.max_retries + 1):
-            logger.info(f"[{self.camera_id}] Reconnect attempt {attempt}/{self.max_retries}")
+
+            logger.info(
+                f"[{self.camera_id}] "
+                f"Reconnect attempt {attempt}/{self.max_retries}"
+            )
+
             if self.cap is not None:
                 self.cap.release()
-            self.cap = cv2.VideoCapture(self.source_url)
-            if self.cap.isOpened():
-                logger.info(f"[{self.camera_id}] Reconnected successfully")
-                return True
+
+            try:
+
+                if isinstance(self.source_url, int):
+                    self.cap = cv2.VideoCapture(
+                        self.source_url,
+                        cv2.CAP_DSHOW
+                    )
+                else:
+                    self.cap = cv2.VideoCapture(
+                        self.source_url
+                    )
+
+                if self.cap.isOpened():
+
+                    logger.info(
+                        f"[{self.camera_id}] Reconnected successfully"
+                    )
+
+                    return True
+
+            except Exception as e:
+
+                logger.error(
+                    f"[{self.camera_id}] Reconnect error: {e}"
+                )
+
             time.sleep(self.retry_delay)
 
-        logger.error(f"[{self.camera_id}] Failed to reconnect after {self.max_retries} attempts")
+        logger.error(
+            f"[{self.camera_id}] "
+            f"Failed to reconnect after {self.max_retries} attempts"
+        )
+
         return False
 
     def release(self):
