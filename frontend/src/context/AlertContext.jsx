@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import socket from "../services/websocket";
+import { announceAlert } from "../services/voiceAlerts";
 
 const AlertContext = createContext();
 
@@ -20,6 +21,8 @@ export function AlertProvider({ children }) {
             console.log("New Alert:", alert);
 
             setAlerts((prev) => [alert, ...prev]);
+
+            announceAlert(alert);
         };
 
         const handleLiveFrame = (data) => {

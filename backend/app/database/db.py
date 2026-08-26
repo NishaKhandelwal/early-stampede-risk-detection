@@ -24,9 +24,13 @@ def get_connection():
 
 
 def init_db():
-    """Call this once at app startup to create tables if they don't exist."""
+    """Call this once at app startup to create/update tables."""
     conn = get_connection()
     cur = conn.cursor()
+
+    # -----------------------------------------------------------
+    # Alerts
+    # -----------------------------------------------------------
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS alerts (
@@ -37,9 +41,14 @@ def init_db():
             people_count INTEGER,
             density_level TEXT,
             motion_level TEXT,
-            timestamp TEXT NOT NULL
+            timestamp TEXT NOT NULL,
+            acknowledged INTEGER NOT NULL DEFAULT 0
         )
     """)
+
+    # -----------------------------------------------------------
+    # Analytics
+    # -----------------------------------------------------------
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS analytics (
@@ -55,27 +64,68 @@ def init_db():
         )
     """)
 
+    # -----------------------------------------------------------
+    # Existing database compatibility
+    # -----------------------------------------------------------
+    # If the alerts table already existed before the
+    # acknowledged column was introduced, add it safely.
+
+    cur.execute("PRAGMA table_info(alerts)")
+    alert_columns = [row["name"] for row in cur.fetchall()]
+
+    if "acknowledged" not in alert_columns:
+        cur.execute("""
+            ALTER TABLE alerts
+            ADD COLUMN acknowledged INTEGER NOT NULL DEFAULT 0
+        """)
+
     conn.commit()
     conn.close()
-
 
 # ---------------------------------------------------------------
 # Alerts
 # ---------------------------------------------------------------
 
-def save_alert(camera_id, risk_level, message, people_count, density_level, motion_level):
+def save_alert(
+    camera_id,
+    risk_level,
+    message,
+    people_count,
+    density_level,
+    motion_level
+):
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("""
-        INSERT INTO alerts (camera_id, risk_level, message, people_count,
-                             density_level, motion_level, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO alerts (
+            camera_id,
+            risk_level,
+            message,
+            people_count,
+            density_level,
+            motion_level,
+            timestamp,
+            acknowledged
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        camera_id, risk_level, message, people_count,
-        density_level, motion_level, datetime.now().isoformat()
+        camera_id,
+        risk_level,
+        message,
+        people_count,
+        density_level,
+        motion_level,
+        datetime.now().isoformat(),
+        0
     ))
+
+    alert_id = cur.lastrowid
+
     conn.commit()
     conn.close()
+
+    return alert_id
 
 
 def get_alerts(limit=50, risk_level=None):
@@ -258,3 +308,37 @@ def get_analytics_summary(camera_id=None, limit=200):
 
         "risk_breakdown": risk_breakdown
     }
+def acknowledge_alert(alert_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE alerts
+        SET acknowledged = 1
+        WHERE id = ?
+    """, (alert_id,))
+
+    updated = cur.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return updated > 0
+
+
+def acknowledge_all_alerts():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE alerts
+        SET acknowledged = 1
+        WHERE acknowledged = 0
+    """)
+
+    updated = cur.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return updated

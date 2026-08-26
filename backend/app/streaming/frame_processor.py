@@ -154,7 +154,7 @@ class FrameProcessor(threading.Thread):
 
                 if result["risk_level"] in ALERTABLE_RISK_LEVELS:
 
-                    save_alert(
+                    alert_id = save_alert(
                         camera_id=self.camera_id,
                         risk_level=result["risk_level"],
                         message=result["risk_message"],
@@ -164,6 +164,7 @@ class FrameProcessor(threading.Thread):
                     )
 
                     emit_new_alert({
+                        "id": alert_id,
                         "camera_id": self.camera_id,
                         "risk_level": result["risk_level"],
                         "message": result["risk_message"],
