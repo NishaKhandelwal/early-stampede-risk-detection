@@ -14,7 +14,11 @@ risk_level  - optional filter: WARNING or HIGH RISK
 
 from flask import Blueprint, request, jsonify
 
-from app.database.db import get_alerts
+from app.database.db import (
+    get_alerts,
+    acknowledge_alert,
+    acknowledge_all_alerts,
+)
 
 
 alerts_bp = Blueprint("alerts_bp", __name__)
@@ -88,4 +92,28 @@ def list_alerts():
         "success": True,
         "count": len(alerts),
         "alerts": alerts,
+    }), 200
+@alerts_bp.route("/alerts/<int:alert_id>/acknowledge", methods=["POST"])
+def acknowledge_single_alert(alert_id):
+    success = acknowledge_alert(alert_id)
+
+    if not success:
+        return jsonify({
+            "success": False,
+            "error": "Alert not found"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "message": "Alert acknowledged",
+        "alert_id": alert_id,
+    }), 200
+@alerts_bp.route("/alerts/acknowledge-all", methods=["POST"])
+def acknowledge_all():
+    count = acknowledge_all_alerts()
+
+    return jsonify({
+        "success": True,
+        "message": "All alerts acknowledged",
+        "count": count,
     }), 200

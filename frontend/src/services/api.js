@@ -100,5 +100,36 @@ export const removeCamera = async (cameraId) => {
 
     return response.data;
 };
+export const getAlerts = async ({
+    limit = 50,
+    risk_level = null,
+} = {}) => {
+    const params = {
+        limit,
+    };
 
+    if (risk_level) {
+        params.risk_level = risk_level;
+    }
+
+    const response = await api.get("/alerts", { params });
+
+    return response.data;
+};
+export const acknowledgeAlert = async (alertId) => {
+    const response = await api.post(
+        `/alerts/${alertId}/acknowledge`
+    );
+
+    return response.data;
+};
+
+
+export const acknowledgeAllAlerts = async () => {
+    const response = await api.post(
+        "/alerts/acknowledge-all"
+    );
+
+    return response.data;
+};
 export default api;
