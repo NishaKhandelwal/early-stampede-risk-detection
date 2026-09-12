@@ -5,7 +5,7 @@ import { useAlertContext } from "../context/AlertContext";
 import { uploadVideo } from "../services/detectionService";
 import socket from "../services/websocket";
 export default function Dashboard() {
-  const { dashboardData } = useAlertContext();
+  const { dashboardData, liveFrames } = useAlertContext();
   const [showAlert, setShowAlert] = useState(false);
   const [videoSource, setVideoSource] = useState(null);
   const [alertSector, setAlertSector] = useState(null);
@@ -13,11 +13,25 @@ export default function Dashboard() {
   const [processing, setProcessing] = useState(false);
   const [analysisResult,setAnalysisResult]=useState(null);
   //const [liveFrame, setLiveFrame] = useState(null);
+  const MAIN_CAMERA_ID = "CAM-RTSP-01";
+  const mainCameraData =
+    dashboardData?.[MAIN_CAMERA_ID] || null;
+
+  const mainLiveFrame =
+    liveFrames?.[MAIN_CAMERA_ID] || null;
+
+  const mainLiveFrameSrc =
+    mainLiveFrame
+      ? mainLiveFrame.startsWith("data:image")
+        ? mainLiveFrame
+        : `data:image/jpeg;base64,${mainLiveFrame}`
+      : null;
+
   const audioCtxRef = useRef(null);
   useEffect(() => {
-    if (!dashboardData) return;
+    if (!mainCameraData) return;
 
-    const data = dashboardData;
+    const data = mainCameraData;
 
     setAnalysisResult((prev) => ({
         ...(prev || {}),
@@ -77,7 +91,7 @@ export default function Dashboard() {
             prev?.risk_events ??
             [],
     }));
-}, [dashboardData]);
+}, [mainCameraData]);
   
   const handleVideoUpload = async (e) => {
 
@@ -372,10 +386,10 @@ export default function Dashboard() {
                   />
 
                   {/* Live AI Overlay */}
-                  {processing && liveFrame && (
+                  {processing && mainLiveFrame && (
                     <img
-                      key={liveFrame}
-                      src={liveFrame}
+                      key={mainLiveFrameSrc}
+                      src={mainLiveFrameSrc}
                       alt="Live AI Overlay"
                       style={{
                           position: "absolute",

@@ -42,7 +42,13 @@ def should_emit_alert(camera_id, risk_level):
 
     A continuous WARNING/HIGH RISK condition should not create
     a new alert on every processed frame.
+
+    Invalid / missing risk levels are ignored.
     """
+
+    # Never create an alert for an invalid risk state.
+    if not risk_level:
+        return False
 
     now = time.time()
 
@@ -54,37 +60,35 @@ def should_emit_alert(camera_id, risk_level):
             "risk_level": risk_level,
             "last_alert_time": now,
         }
-        return True
+
+        return risk_level in ALERTABLE_RISK_LEVELS
 
     previous_risk = state["risk_level"]
     last_alert_time = state["last_alert_time"]
 
     # Risk returned to NORMAL or another non-alertable state.
-    # Treat the next alert as a new incident.
     if risk_level not in ALERTABLE_RISK_LEVELS:
         _alert_states[camera_id] = {
             "risk_level": risk_level,
             "last_alert_time": last_alert_time,
         }
+
         return False
 
     # Risk level changed.
-    # Example:
-    # WARNING -> HIGH RISK
-    #
-    # This is important enough to announce immediately.
     if risk_level != previous_risk:
         _alert_states[camera_id] = {
             "risk_level": risk_level,
             "last_alert_time": now,
         }
+
         return True
 
     # Same risk condition is continuing.
     if now - last_alert_time < ALERT_COOLDOWN_SECONDS:
         return False
 
-    # Cooldown expired, allow another alert.
+    # Cooldown expired.
     _alert_states[camera_id] = {
         "risk_level": risk_level,
         "last_alert_time": now,
@@ -216,29 +220,30 @@ class FrameProcessor(threading.Thread):
                     self.camera_id,
                     result["risk_level"]
                 ):
-                    save_alert(
-                        camera_id=self.camera_id,
-                        risk_level=result["risk_level"],
-                        message=result["risk_message"],
-                        people_count=result["people_count"],
-                        density_level=result["density_level"],
-                        motion_level=result["motion_level"],
-                    )
+                    try:
+                        save_alert(
+                            camera_id=self.camera_id,
+                            risk_level=result["risk_level"],
+                            message=result.get("risk_message"),
+                            people_count=result.get("people_count", 0),
+                            density_level=result.get("density_level"),
+                            motion_level=result.get("motion_level"),
+                        )
 
-                    emit_new_alert({
-                        "camera_id": self.camera_id,
-                        "risk_level": result["risk_level"],
-                        "message": result["risk_message"],
-                        "people_count": result["people_count"],
-                        "density_level": result["density_level"],
-                        "motion_level": result["motion_level"],
-                    })
+                        emit_new_alert({
+                            "camera_id": self.camera_id,
+                            "risk_level": result["risk_level"],
+                            "message": result.get("risk_message"),
+                            "people_count": result.get("people_count", 0),
+                            "density_level": result.get("density_level"),
+                            "motion_level": result.get("motion_level"),
+                        })
 
-        except Exception as e:
+                    except Exception as e:
+                        logger.exception(
+                            f"[{self.camera_id}] Alert handling failed: {e}"
+                        )
 
-            logger.exception(
-                f"[{self.camera_id}] Unexpected stream processing error: {e}"
-            )
 
         finally:
             self.camera.release()

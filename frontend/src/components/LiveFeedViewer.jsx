@@ -1,11 +1,16 @@
-import { useEffect } from "react";
+import React from "react";
 import { useAlertContext } from "../context/AlertContext";
 
 function LiveFeedViewer({ cameraId }) {
     const { liveFrames } = useAlertContext();
 
-    const frame = liveFrames?.[cameraId];
+    const rawFrame = liveFrames?.[cameraId];
 
+    const frame = rawFrame
+        ? rawFrame.startsWith("data:image")
+            ? rawFrame
+            : `data:image/jpeg;base64,${rawFrame}`
+        : null;
     return (
         <div
             style={{
@@ -21,7 +26,7 @@ function LiveFeedViewer({ cameraId }) {
         >
             {frame ? (
                 <img
-                    src={`data:image/jpeg;base64,${frame}`}
+                    src={frame}
                     alt={`Live feed ${cameraId}`}
                     style={{
                         width: "100%",

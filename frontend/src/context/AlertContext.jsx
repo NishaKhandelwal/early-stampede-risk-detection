@@ -5,7 +5,7 @@ import { announceAlert } from "../services/voiceAlerts";
 const AlertContext = createContext();
 
 export function AlertProvider({ children }) {
-    const [dashboardData, setDashboardData] = useState(null);
+    const [dashboardData, setDashboardData] = useState({});
     const [alerts, setAlerts] = useState([]);
     const [liveFrames, setLiveFrames] = useState({});
     const [processingStatus, setProcessingStatus] = useState({});
@@ -14,7 +14,14 @@ export function AlertProvider({ children }) {
         const handleDashboardUpdate = (data) => {
             console.log("Dashboard Update:", data);
 
-            setDashboardData(data);
+            if (!data?.camera_id) {
+                return;
+            }
+
+            setDashboardData((prev) => ({
+                ...prev,
+                [data.camera_id]: data,
+            }));
         };
 
         const handleNewAlert = (alert) => {

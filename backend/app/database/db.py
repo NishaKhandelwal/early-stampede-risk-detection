@@ -16,10 +16,19 @@ from datetime import datetime
 
 from app.core.settings import DB_PATH
 
-
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=10,
+        check_same_thread=False
+    )
     conn.row_factory = sqlite3.Row
+
+    # Better concurrency for SQLite:
+    # readers can continue while a writer is active.
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=10000")
+
     return conn
 
 
@@ -94,6 +103,42 @@ def save_alert(
     density_level,
     motion_level
 ):
+    # Alerts require a valid risk level.
+    if not risk_level:
+        return None
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO alerts (
+            camera_id,
+            risk_level,
+            message,
+            people_count,
+            density_level,
+            motion_level,
+            timestamp,
+            acknowledged
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        camera_id,
+        risk_level,
+        message,
+        people_count,
+        density_level,
+        motion_level,
+        datetime.now().isoformat(),
+        0
+    ))
+
+    alert_id = cur.lastrowid
+
+    conn.commit()
+    conn.close()
+
+    return alert_id
     conn = get_connection()
     cur = conn.cursor()
 
@@ -151,21 +196,61 @@ def get_alerts(limit=50, risk_level=None):
 # Analytics
 # ---------------------------------------------------------------
 
-def save_analytics_snapshot(camera_id, people_count, density_score, density_level,
-                             motion_score, motion_level, risk_level):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO analytics (camera_id, people_count, density_score, density_level,
-                                motion_score, motion_level, risk_level, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        camera_id, people_count, density_score, density_level,
-        motion_score, motion_level, risk_level, datetime.now().isoformat()
-    ))
-    conn.commit()
-    conn.close()
+def save_analytics_snapshot(
+    camera_id,
+    people_count,
+    density_score,
+    density_level,
+    motion_score,
+    motion_level,
+    risk_level
+):
+    conn = None
 
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO analytics (
+                camera_id,
+                people_count,
+                density_score,
+                density_level,
+                motion_score,
+                motion_level,
+                risk_level,
+                timestamp
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            camera_id,
+            people_count,
+            density_score,
+            density_level,
+            motion_score,
+            motion_level,
+            risk_level,
+            datetime.now().isoformat()
+        ))
+
+        conn.commit()
+
+    except sqlite3.OperationalError as e:
+        print(
+            f"[DB WARNING] Failed to save analytics "
+            f"for {camera_id}: {e}"
+        )
+
+    except Exception as e:
+        print(
+            f"[DB ERROR] Unexpected analytics save error "
+            f"for {camera_id}: {e}"
+        )
+
+    finally:
+        if conn is not None:
+            conn.close()
 
 def get_analytics_summary(camera_id=None, limit=200):
     """
