@@ -11,7 +11,8 @@ export default function Dashboard() {
   const [alertSector, setAlertSector] = useState(null);
   const [processedVideo, setProcessedVideo] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [analysisResult,setAnalysisResult]=useState(null);
+  const [liveAnalysis, setLiveAnalysis] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
   //const [liveFrame, setLiveFrame] = useState(null);
   const MAIN_CAMERA_ID = "CAM-RTSP-01";
   const mainCameraData =
@@ -26,6 +27,9 @@ export default function Dashboard() {
         ? mainLiveFrame
         : `data:image/jpeg;base64,${mainLiveFrame}`
       : null;
+  const displayAnalysis = mainCameraData
+    ? liveAnalysis
+    : analysisResult;
 
   const audioCtxRef = useRef(null);
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function Dashboard() {
 
     const data = mainCameraData;
 
-    setAnalysisResult((prev) => ({
+    setLiveAnalysis((prev) => ({
         ...(prev || {}),
 
         max_people_count:
@@ -133,13 +137,13 @@ export default function Dashboard() {
   const generateMotionPoints = () => {
 
     if (
-      !analysisResult?.motion_history ||
-      analysisResult.motion_history.length === 0
+      !displayAnalysis?.motion_history ||
+      displayAnalysis.motion_history.length === 0
     ) {
       return "0,35 200,35";
     }
 
-    const history = analysisResult.motion_history;
+    const history = displayAnalysis.motion_history;
 
     const maxValue = Math.max(...history, 1);
 
@@ -160,10 +164,10 @@ export default function Dashboard() {
   };
   const generatePeoplePoints = () => {
 
-    if (!analysisResult?.people_history?.length)
+    if (!displayAnalysis?.people_history?.length)
       return "0,35 200,35";
 
-    const history = analysisResult.people_history;
+    const history = displayAnalysis.people_history;
 
     const max = Math.max(...history,1);
 
@@ -321,7 +325,7 @@ export default function Dashboard() {
         <div className="panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Camera color="var(--accent-yellow)" size={20} /> LIVE Feed: Sector A (Main Ghat)
+              <Camera color="var(--accent-yellow)" size={20} />LIVE Feed: {MAIN_CAMERA_ID}
             </h3>
             <span style={{
               backgroundColor: 'rgba(255, 77, 77, 0.2)',
@@ -345,173 +349,189 @@ export default function Dashboard() {
               backgroundImage: "radial-gradient(circle at center, #111 0%, #000 100%)",
             }}
           >
-            {showAlert && (
+            {mainLiveFrameSrc ? (
               <div
-                style={{
-                  position: "absolute",
-                  top: "10%",
-                  left: "10%",
-                  right: "10%",
-                  bottom: "10%",
-                  border: "4px solid var(--alert-red)",
-                  backgroundColor: "rgba(255, 77, 77, 0.1)",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              ></div>
-            )}
-            {videoSource ? (
-              <>
-                <div
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    position: "relative",
-                    overflow: "hidden",
+                      width: "100%",
+                      height: "100%",
+                      position: "relative",
+                      overflow: "hidden",
                   }}
-                >
-                  {/* Background Video */}
-                  <video
-                    src={processedVideo || videoSource}
-                    autoPlay
-                    loop
-                    muted
-                    controls
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        filter: "brightness(0.82)",
-                    }}
-                  />
-
-                  {/* Live AI Overlay */}
-                  {processing && mainLiveFrame && (
-                    <img
+              >
+                  <img
                       key={mainLiveFrameSrc}
                       src={mainLiveFrameSrc}
-                      alt="Live AI Overlay"
+                      alt={`Live AI Feed ${MAIN_CAMERA_ID}`}
                       style={{
-                          position: "absolute",
-                          inset: 0,
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
-                          pointerEvents: "none",
-                          opacity: 1,
-                          transition: "opacity 80ms linear",
-                          willChange: "opacity",
+                          filter: "brightness(0.82)",
                       }}
-                    />
-                  )}
-                </div>
-
-                {processing && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "20px",
-                      right: "20px",
-                      width: "260px",
-                      padding: "16px",
-                      background: "rgba(15, 23, 42, 0.55)",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: "12px",
-                      color: "#fff",
-                      zIndex: 20,
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "22px",
-                          height: "22px",
-                          border: "3px solid rgba(255,255,255,0.2)",
-                          borderTop: "3px solid #00e5ff",
-                          borderRadius: "50%",
-                          animation: "spin 0.9s linear infinite",
-                        }}
-                      />
-
-                      <div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: "15px",
-                          }}
-                        >
-                          AI Processing
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#94a3b8",
-                          }}
-                        >
-                          Live analysis running
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <div>👤 Detecting Crowd</div>
-                      <div>📊 Density Analysis</div>
-                      <div>🏃 Motion Analysis</div>
-                      <div>⚠ Risk Assessment</div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div
-                className="flex-center"
-                style={{
-                  height: "100%",
-                  color: "var(--text-secondary)",
-                  flexDirection: "column",
-                  gap: "1rem",
-                }}
-              >
-                <span>[ Main Camera AI Feed ]</span>
-
-                <label
-                  className="btn-primary"
-                  style={{
-                    cursor: "pointer",
-                    backgroundColor: "var(--panel-grey)",
-                    color: "var(--text-primary)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  Feed Test Video
-
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoUpload}
-                    style={{ display: "none" }}
                   />
-                </label>
+
+                  {showAlert && (
+                      <div
+                          style={{
+                              position: "absolute",
+                              top: "10%",
+                              left: "10%",
+                              right: "10%",
+                              bottom: "10%",
+                              border: "4px solid var(--alert-red)",
+                              backgroundColor: "rgba(255, 77, 77, 0.1)",
+                              pointerEvents: "none",
+                              zIndex: 2,
+                          }}
+                      />
+                  )}
+
+                  <div
+                      style={{
+                          position: "absolute",
+                          top: "20px",
+                          left: "20px",
+                          padding: "0.5rem 0.8rem",
+                          background: "rgba(0,0,0,0.65)",
+                          borderRadius: "8px",
+                          color: "#fff",
+                          fontSize: "0.8rem",
+                          fontWeight: "600",
+                          zIndex: 3,
+                      }}
+                  >
+                      LIVE · {MAIN_CAMERA_ID}
+                  </div>
               </div>
-            )}
+          ) : videoSource ? (
+              <div
+                  style={{
+                      width: "100%",
+                      height: "100%",
+                      position: "relative",
+                      overflow: "hidden",
+                  }}
+              >
+                  <video
+                      src={processedVideo || videoSource}
+                      autoPlay
+                      loop
+                      muted
+                      controls
+                      style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          filter: "brightness(0.82)",
+                      }}
+                  />
+
+                  {processing && (
+                      <div
+                          style={{
+                              position: "absolute",
+                              top: "20px",
+                              right: "20px",
+                              width: "260px",
+                              padding: "16px",
+                              background: "rgba(15, 23, 42, 0.55)",
+                              backdropFilter: "blur(8px)",
+                              WebkitBackdropFilter: "blur(8px)",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              borderRadius: "12px",
+                              color: "#fff",
+                              zIndex: 20,
+                              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                          }}
+                      >
+                          <div
+                              style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "12px",
+                                  marginBottom: "12px",
+                              }}
+                          >
+                              <div
+                                  style={{
+                                      width: "22px",
+                                      height: "22px",
+                                      border: "3px solid rgba(255,255,255,0.2)",
+                                      borderTop: "3px solid #00e5ff",
+                                      borderRadius: "50%",
+                                      animation: "spin 0.9s linear infinite",
+                                  }}
+                              />
+
+                              <div>
+                                  <div
+                                      style={{
+                                          fontWeight: 600,
+                                          fontSize: "15px",
+                                      }}
+                                  >
+                                      AI Processing
+                                  </div>
+
+                                  <div
+                                      style={{
+                                          fontSize: "12px",
+                                          color: "#94a3b8",
+                                      }}
+                                  >
+                                      Live analysis running
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div
+                              style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "8px",
+                                  fontSize: "13px",
+                              }}
+                          >
+                              <div>👤 Detecting Crowd</div>
+                              <div>📊 Density Analysis</div>
+                              <div>🏃 Motion Analysis</div>
+                              <div>⚠ Risk Assessment</div>
+                          </div>
+                      </div>
+                  )}
+              </div>
+          ) : (
+              <div
+                  className="flex-center"
+                  style={{
+                      height: "100%",
+                      color: "var(--text-secondary)",
+                      flexDirection: "column",
+                      gap: "1rem",
+                  }}
+              >
+                  <span>[ Main Camera AI Feed ]</span>
+
+                  <label
+                      className="btn-primary"
+                      style={{
+                          cursor: "pointer",
+                          backgroundColor: "var(--panel-grey)",
+                          color: "var(--text-primary)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                  >
+                      Feed Test Video
+
+                      <input
+                          type="file"
+                          accept="video/*"
+                          onChange={handleVideoUpload}
+                          style={{ display: "none" }}
+                      />
+                  </label>
+              </div>
+          )}
           </div>
            
         </div>
@@ -529,15 +549,15 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>People count</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.max_people_count ?? "--"}</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{displayAnalysis?.max_people_count ?? "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Density</span>
-                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_density_level ?? "--"}</span>
+                <span style={{ color: '#4fd1c5', fontWeight: 'bold', fontSize: '0.9rem' }}>{displayAnalysis?.final_density_level ?? "--"}</span>
               </div>
               <div className="flex-between">
                 <span style={{ color: '#718096', fontSize: '0.9rem' }}>Motion score</span>
-                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{analysisResult?.final_motion_score != null? analysisResult.final_motion_score.toFixed(2): "--"}</span>
+                <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '0.9rem' }}>{displayAnalysis?.final_motion_score != null? displayAnalysis.final_motion_score.toFixed(2): "--"}</span>
               </div>
               <div
               style={{
@@ -577,9 +597,9 @@ export default function Dashboard() {
             <h2
             style={{
             color:
-            analysisResult?.final_risk_level==="HIGH"
+            displayAnalysis?.final_risk_level==="HIGH"
             ?"#ef4444"
-            :analysisResult?.final_risk_level==="WARNING"
+            :displayAnalysis?.final_risk_level==="WARNING"
             ?"#f59e0b"
             :"#22c55e",
 
@@ -598,11 +618,11 @@ export default function Dashboard() {
 
             {
 
-            analysisResult?.final_risk_level==="HIGH"
+            displayAnalysis?.final_risk_level==="HIGH"
 
             ?"🔴"
 
-            :analysisResult?.final_risk_level==="WARNING"
+            :displayAnalysis?.final_risk_level==="WARNING"
 
             ?"🟡"
 
@@ -610,11 +630,11 @@ export default function Dashboard() {
 
             }
 
-            {analysisResult?.final_risk_level??"--"}
+            {displayAnalysis?.final_risk_level??"--"}
 
             </h2>
             <p style={{ color: "#718096", margin: 0, fontSize: "0.85rem", lineHeight: "1.6" }}>
-              {analysisResult?.risk_message || "Upload a video to begin AI analysis."}
+              {displayAnalysis?.risk_message || "Upload a video to begin AI analysis."}
             </p>
           </div>
 
@@ -686,7 +706,7 @@ export default function Dashboard() {
                 fontWeight: "bold",
               }}
             >
-              {analysisResult?.final_motion_score?.toFixed(2) ?? "--"}
+              {displayAnalysis?.final_motion_score?.toFixed(2) ?? "--"}
             </span>
           </div>
 
@@ -706,15 +726,15 @@ export default function Dashboard() {
             <span
               style={{
                 color:
-                  analysisResult?.final_motion_level === "HIGH"
+                  displayAnalysis?.final_motion_level === "HIGH"
                     ? "#ef4444"
-                    : analysisResult?.final_motion_level === "MEDIUM"
+                    : displayAnalysis?.final_motion_level === "MEDIUM"
                     ? "#f59e0b"
                     : "#22c55e",
                 fontWeight: "bold",
               }}
             >
-              {analysisResult?.final_motion_level ?? "--"}
+              {displayAnalysis?.final_motion_level ?? "--"}
             </span>
           </div>
         </div>
@@ -752,13 +772,13 @@ export default function Dashboard() {
                   fontSize: "0.8rem",
                 }}
               >
-                {analysisResult?.risk_events?.length ?? 0}
+                {displayAnalysis?.risk_events?.length ?? 0}
               </span>
             </div>
 
-            {analysisResult?.risk_events?.length > 0 ? (
+            {displayAnalysis?.risk_events?.length > 0 ? (
 
-              analysisResult.risk_events.map((event, index) => {
+              displayAnalysis.risk_events.map((event, index) => {
 
                 const badgeColor =
                   event.risk_level === "HIGH"
