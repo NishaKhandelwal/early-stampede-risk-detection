@@ -139,38 +139,6 @@ def save_alert(
     conn.close()
 
     return alert_id
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO alerts (
-            camera_id,
-            risk_level,
-            message,
-            people_count,
-            density_level,
-            motion_level,
-            timestamp,
-            acknowledged
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        camera_id,
-        risk_level,
-        message,
-        people_count,
-        density_level,
-        motion_level,
-        datetime.now().isoformat(),
-        0
-    ))
-
-    alert_id = cur.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return alert_id
 
 
 def get_alerts(limit=50, risk_level=None):
