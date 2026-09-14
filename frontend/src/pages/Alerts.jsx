@@ -54,20 +54,23 @@ export default function Alerts() {
     // Combine database alerts + newly received live alerts
     // ---------------------------------------------------------
 
-    const allAlerts = [
-        ...liveAlerts,
-        ...historyAlerts,
-    ];
+    const alertMap = new Map();
 
-    // Remove duplicates
-    const uniqueAlerts = Array.from(
-        new Map(
-            allAlerts.map((alert, index) => [
-                alert.id ?? `${alert.camera_id}-${alert.timestamp}-${index}`,
-                alert,
-            ])
-        ).values()
-    );
+    // Database history is the source of truth.
+    historyAlerts.forEach((alert) => {
+        if (alert.id != null) {
+            alertMap.set(alert.id, alert);
+        }
+    });
+
+    // Add live alerts only if they are not already in history.
+    liveAlerts.forEach((alert) => {
+        if (alert.id != null && !alertMap.has(alert.id)) {
+            alertMap.set(alert.id, alert);
+        }
+    });
+
+    const uniqueAlerts = Array.from(alertMap.values());
     const handleAcknowledge = async (alertId) => {
         if (!alertId) {
             return;
@@ -81,16 +84,11 @@ export default function Alerts() {
 
             await acknowledgeAlert(alertId);
 
-            setHistoryAlerts((prev) =>
-                prev.map((alert) =>
-                    alert.id === alertId
-                        ? {
-                              ...alert,
-                              acknowledged: 1,
-                          }
-                        : alert
-                )
-            );
+            const response = await getAlerts({
+                limit: 50,
+            });
+
+            setHistoryAlerts(response.alerts || []);
         } catch (error) {
             console.error(
                 "Failed to acknowledge alert:",
@@ -107,12 +105,11 @@ export default function Alerts() {
         try {
             await acknowledgeAllAlerts();
 
-            setHistoryAlerts((prev) =>
-                prev.map((alert) => ({
-                    ...alert,
-                    acknowledged: 1,
-                }))
-            );
+            const response = await getAlerts({
+                limit: 50,
+            });
+
+            setHistoryAlerts(response.alerts || []);
         } catch (error) {
             console.error(
                 "Failed to acknowledge all alerts:",
@@ -194,24 +191,6 @@ export default function Alerts() {
                     </p>
                 </div>
 
-                <button
-                  className="btn-primary"
-                  style={{
-                      padding: "0.5rem 1rem",
-                      fontSize: "0.9rem",
-                  }}
-                  disabled={
-                      alert.acknowledged === 1 ||
-                      acknowledging[alert.id]
-                  }
-                  onClick={() =>
-                      handleAcknowledge(alert.id)
-                  }
-              >
-                  {alert.acknowledged === 1
-                      ? "Acknowledged"
-                      : "Review"}
-              </button>
               <button
                   className="btn-primary"
                   style={{
@@ -426,24 +405,40 @@ export default function Alerts() {
                                                     </span>
                                                 </div>
                                             </div>
+                                        
 
+                                            {alert.acknowledged === 1 ? (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "0.4rem",
+                                                    padding: "0.5rem 1rem",
+                                                    fontSize: "0.9rem",
+                                                    fontWeight: 600,
+                                                    color: "#22c55e",
+                                                }}
+                                            >
+                                                <CheckCircle size={17} />
+                                                Acknowledged
+                                            </div>
+                                        ) : (
                                             <button
                                                 className="btn-primary"
                                                 style={{
-                                                    padding:
-                                                        "0.5rem 1rem",
-                                                    fontSize:
-                                                        "0.9rem",
+                                                    padding: "0.5rem 1rem",
+                                                    fontSize: "0.9rem",
                                                 }}
+                                                disabled={acknowledging[alert.id]}
                                                 onClick={() =>
-                                                    console.log(
-                                                        "Review alert:",
-                                                        alert
-                                                    )
+                                                    handleAcknowledge(alert.id)
                                                 }
                                             >
-                                                Review
+                                                {acknowledging[alert.id]
+                                                    ? "Acknowledging..."
+                                                    : "Acknowledge"}
                                             </button>
+                                        )}
                                         </div>
                                     );
                                 }

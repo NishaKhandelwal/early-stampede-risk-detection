@@ -3,12 +3,13 @@ import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, Shi
 import "./Dashboard.css";
 import { useAlertContext } from "../context/AlertContext";
 import { getCameras } from "../services/cameraService";
+import { acknowledgeAlert } from "../services/api";
 export default function Dashboard() {
   const { dashboardData, liveFrames, alerts } = useAlertContext();
   const [cameras, setCameras] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
   const [showAlert, setShowAlert] = useState(false);
-  const [alertSector, setAlertSector] = useState(null);
+  const [activeAlert, setActiveAlert] = useState(null);
   const [liveAnalysis, setLiveAnalysis] = useState(null);
   const displayAnalysis = liveAnalysis;
   const MAIN_CAMERA_ID = selectedCameraId;
@@ -106,6 +107,39 @@ export default function Dashboard() {
 
   const currentRiskColor = getRiskColor(currentRisk);
   const riskRecommendation = getRiskRecommendation(currentRisk);
+  const alertRisk =
+    activeAlert?.risk_level ??
+    currentRisk;
+
+  const alertCamera =
+    activeAlert?.camera_id ??
+    MAIN_CAMERA_ID ??
+    "Unknown Camera";
+
+  const alertPeople =
+    activeAlert?.people_count ??
+    activeAlert?.current?.people_count ??
+    currentPeople;
+
+  const alertDensity =
+    activeAlert?.density_level ??
+    activeAlert?.current?.density_level ??
+    currentDensity;
+
+  const alertMotion =
+    activeAlert?.motion_level ??
+    activeAlert?.current?.motion_level ??
+    currentMotion;
+
+  const alertMessage =
+    activeAlert?.message ??
+    "Crowd risk detected.";
+
+  const alertRiskColor =
+    getRiskColor(alertRisk);
+
+  const alertRecommendation =
+    getRiskRecommendation(alertRisk);
   const mainLiveFrameSrc =
     mainLiveFrame
       ? mainLiveFrame.startsWith("data:image")
@@ -170,6 +204,20 @@ export default function Dashboard() {
       clearInterval(interval);
     };
   }, []);
+  useEffect(() => {
+    if (!alerts?.length) {
+      return;
+    }
+
+    const latestAlert = alerts[0];
+
+    if (!latestAlert) {
+      return;
+    }
+
+    setActiveAlert(latestAlert);
+    setShowAlert(true);
+  }, [alerts]);
   useEffect(() => {
     if (!mainCameraData) return;
 
@@ -311,11 +359,9 @@ export default function Dashboard() {
     }
   };
 
-  const triggerAlert = (sectorId) => {
-    setAlertSector(sectorId);
+  const triggerAlert = () => {
     setShowAlert(true);
 
-    // Play alert sound multiple times to mimic a siren
     playAlertSound();
     setTimeout(playAlertSound, 600);
     setTimeout(playAlertSound, 1200);
@@ -338,7 +384,7 @@ export default function Dashboard() {
           <div
             style={{
               backgroundColor: "rgba(20, 20, 20, 0.98)",
-              border: `2px solid ${currentRiskColor}`,
+              border: `2px solid ${alertRiskColor}`,
               borderRadius: "22px",
               padding: "1.5rem",
               width: "92%",
@@ -361,7 +407,7 @@ export default function Dashboard() {
             >
               <span
                 style={{
-                  color: currentRiskColor,
+                  color: alertRiskColor,
                   fontWeight: "800",
                   letterSpacing: "0.25em",
                   fontSize: "0.78rem",
@@ -372,7 +418,7 @@ export default function Dashboard() {
 
               <span
                 style={{
-                  background: currentRiskColor,
+                  background: alertRiskColor,
                   color: "#000",
                   padding: "0.25rem 0.85rem",
                   borderRadius: "999px",
@@ -381,7 +427,7 @@ export default function Dashboard() {
                   letterSpacing: "0.08em",
                 }}
               >
-                {currentRisk}
+                {alertRisk}
               </span>
             </div>
 
@@ -399,15 +445,15 @@ export default function Dashboard() {
                   width: "52px",
                   height: "52px",
                   borderRadius: "16px",
-                  backgroundColor: `${currentRiskColor}1F`,
-                  border: `1px solid ${currentRiskColor}55`,
+                  backgroundColor: `${alertRiskColor}1F`,
+                  border: `1px solid ${alertRiskColor}55`,
                   display: "grid",
                   placeItems: "center",
                 }}
               >
                 <AlertTriangle
                   size={26}
-                  color={currentRiskColor}
+                  color={alertRiskColor}
                 />
               </div>
 
@@ -419,7 +465,7 @@ export default function Dashboard() {
                     fontSize: "1.35rem",
                   }}
                 >
-                  {MAIN_CAMERA_ID || "Selected Camera"}
+                  {alertCamera}
                 </h1>
 
                 <p
@@ -471,7 +517,7 @@ export default function Dashboard() {
                     fontWeight: "700",
                   }}
                 >
-                  {currentPeople}
+                  {alertPeople}
                 </div>
               </div>
 
@@ -501,7 +547,7 @@ export default function Dashboard() {
                     fontWeight: "700",
                   }}
                 >
-                  {currentDensity}
+                  {alertDensity}
                 </div>
               </div>
 
@@ -531,16 +577,47 @@ export default function Dashboard() {
                     fontWeight: "700",
                   }}
                 >
-                  {currentMotion}
+                  {alertMotion}
                 </div>
+              </div>
+            </div>
+            {/* Alert Message */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "14px",
+                padding: "1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  color: "#9ca3af",
+                  fontSize: "0.7rem",
+                  letterSpacing: "0.1em",
+                  marginBottom: "0.4rem",
+                }}
+              >
+                ALERT MESSAGE
+              </div>
+
+              <div
+                style={{
+                  color: "#e2e8f0",
+                  fontSize: "0.9rem",
+                  lineHeight: "1.5",
+                }}
+              >
+                {alertMessage}
               </div>
             </div>
 
             {/* Recommendation */}
             <div
               style={{
-                background: `${currentRiskColor}0D`,
-                border: `1px solid ${currentRiskColor}33`,
+                background: `${alertRiskColor}0D`,
+                border: `1px solid ${alertRiskColor}33`,
                 borderRadius: "14px",
                 padding: "1rem",
               }}
@@ -563,7 +640,7 @@ export default function Dashboard() {
                   margin: 0,
                 }}
               >
-                {riskRecommendation}
+                {alertRecommendation}
               </p>
             </div>
 
@@ -576,7 +653,21 @@ export default function Dashboard() {
               }}
             >
               <button
-                onClick={() => setShowAlert(false)}
+                onClick={async () => {
+                  if (!activeAlert?.id) {
+                    console.warn("Cannot acknowledge alert: missing alert ID.");
+                    return;
+                  }
+
+                  try {
+                    await acknowledgeAlert(activeAlert.id);
+
+                    setShowAlert(false);
+                    setActiveAlert(null);
+                  } catch (error) {
+                    console.error("Failed to acknowledge alert:", error);
+                  }
+                }}
                 style={{
                   flex: 1,
                   padding: "1rem",
@@ -591,11 +682,14 @@ export default function Dashboard() {
               </button>
 
               <button
-                onClick={() => setShowAlert(false)}
+                onClick={() => {
+                  setShowAlert(false);
+                  setActiveAlert(null);
+                }}
                 style={{
                   flex: 1,
                   padding: "1rem",
-                  backgroundColor: currentRiskColor,
+                  backgroundColor: alertRiskColor,
                   border: "none",
                   color: "#fff",
                   borderRadius: "14px",
@@ -652,7 +746,7 @@ export default function Dashboard() {
               alignItems: 'center',
               gap: '0.5rem'
             }}
-            onClick={() => triggerAlert('B')}
+            onClick={triggerAlert}
           >
             <AlertTriangle size={18} /> Test Demo Alert
           </button>
@@ -867,8 +961,8 @@ export default function Dashboard() {
                               left: "10%",
                               right: "10%",
                               bottom: "10%",
-                              border: "4px solid var(--alert-red)",
-                              backgroundColor: "rgba(255, 77, 77, 0.1)",
+                              border: `4px solid ${alertRiskColor}`,
+                              backgroundColor: `${alertRiskColor}1A`,
                               pointerEvents: "none",
                               zIndex: 2,
                           }}
@@ -1020,7 +1114,7 @@ export default function Dashboard() {
 
             </h2>
             <p style={{ color: "#718096", margin: 0, fontSize: "0.85rem", lineHeight: "1.6" }}>
-              {displayAnalysis?.risk_message || "Upload a video to begin AI analysis."}
+              {displayAnalysis?.risk_message || "Waiting for live AI analysis."}
             </p>
           </div>
 

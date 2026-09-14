@@ -221,7 +221,7 @@ class FrameProcessor(threading.Thread):
                     result["risk_level"]
                 ):
                     try:
-                        save_alert(
+                        alert_id = save_alert(
                             camera_id=self.camera_id,
                             risk_level=result["risk_level"],
                             message=result.get("risk_message"),
@@ -231,12 +231,14 @@ class FrameProcessor(threading.Thread):
                         )
 
                         emit_new_alert({
+                            "id": alert_id,
                             "camera_id": self.camera_id,
                             "risk_level": result["risk_level"],
                             "message": result.get("risk_message"),
                             "people_count": result.get("people_count", 0),
                             "density_level": result.get("density_level"),
                             "motion_level": result.get("motion_level"),
+                            "acknowledged": 0,
                         })
 
                     except Exception as e:
