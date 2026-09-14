@@ -138,7 +138,7 @@ def upload_video():
         )
 
         if result["risk_level"] in ALERTABLE_RISK_LEVELS:
-            save_alert(
+            alert_id = save_alert(
                 camera_id=camera_id,
                 risk_level=result["risk_level"],
                 message=result["risk_message"],
@@ -146,13 +146,16 @@ def upload_video():
                 density_level=result["density_level"],
                 motion_level=result["motion_level"],
             )
+
             alert = {
+                "id": alert_id,
                 "camera_id": camera_id,
                 "risk_level": result["risk_level"],
                 "message": result["risk_message"],
                 "people_count": result["people_count"],
                 "density_level": result["density_level"],
                 "motion_level": result["motion_level"],
+                "acknowledged": 0,
             }
 
             emit_new_alert(alert)
@@ -244,7 +247,7 @@ def process_frame():
     }
 
     if result["risk_level"] in ALERTABLE_RISK_LEVELS:
-        save_alert(
+        alert_id = save_alert(
             camera_id=camera_id,
             risk_level=result["risk_level"],
             message=result["risk_message"],
@@ -252,13 +255,16 @@ def process_frame():
             density_level=result["density_level"],
             motion_level=result["motion_level"],
         )
+
         alert = {
+            "id": alert_id,
             "camera_id": camera_id,
             "risk_level": result["risk_level"],
             "message": result["risk_message"],
             "people_count": result["people_count"],
             "density_level": result["density_level"],
             "motion_level": result["motion_level"],
+            "acknowledged": 0,
         }
 
         emit_new_alert(alert)
