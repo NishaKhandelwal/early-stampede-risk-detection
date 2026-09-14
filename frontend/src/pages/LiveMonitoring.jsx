@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { RefreshCw, Video } from "lucide-react";
-
+import "./LiveMonitoring.css";
 import CameraCard from "../components/CameraCard";
 import { getCameras } from "../services/cameraService";
 
@@ -74,14 +74,9 @@ export default function LiveMonitoring() {
                 </div>
 
                 <button
-                    className="button"
+                    className="monitoring-refresh-button"
                     onClick={loadCameras}
                     disabled={loading}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.4rem",
-                    }}
                 >
                     <RefreshCw size={16} />
                     Refresh

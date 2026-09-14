@@ -7,6 +7,7 @@ import {
     RefreshCw,
     Video,
 } from "lucide-react";
+import "./CameraManagement.css";
 
 import {
     getCameras,
@@ -209,7 +210,7 @@ export default function CameraManagement() {
     };
 
     return (
-        <div>
+        <div className="camera-management">
             <div
                 className="flex-between"
                 style={{
@@ -238,7 +239,7 @@ export default function CameraManagement() {
                     }}
                 >
                     <button
-                        className="button"
+                        className="camera-button camera-button-refresh"
                         onClick={loadCameras}
                         disabled={loading}
                     >
@@ -248,7 +249,7 @@ export default function CameraManagement() {
                     </button>
 
                     <button
-                        className="button button-primary"
+                        className="camera-button camera-button-add"
                         onClick={() => {
                             setShowForm(!showForm);
                             setError("");
@@ -287,40 +288,32 @@ export default function CameraManagement() {
             )}
 
             {showForm && (
-                <div
-                    className="panel"
-                    style={{
-                        marginBottom: "2rem",
-                    }}
-                >
-                    <h2 style={{ marginTop: 0 }}>
+                <div className="camera-form-panel">
+                    <h2 className="camera-form-title">
                         Register Camera
                     </h2>
-
                     <form onSubmit={handleRegister}>
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns:
-                                    "repeat(auto-fit,minmax(220px,1fr))",
-                                gap: "1rem",
-                            }}
-                        >
-                            <div>
-                                <label>Camera ID</label>
+                        <div className="camera-form-grid">
+                            <div className="camera-form-field">
+                                <label className="camera-form-label">
+                                    Camera ID
+                                </label>
 
                                 <input
+                                    className="camera-form-input"
                                     name="camera_id"
                                     value={form.camera_id}
                                     onChange={handleInputChange}
                                     placeholder="CAM-01"
                                 />
                             </div>
-
-                            <div>
-                                <label>Source Type</label>
+                            <div className="camera-form-field">
+                                <label className="camera-form-label">
+                                    Source Type
+                                </label>
 
                                 <select
+                                    className="camera-form-select"
                                     name="source_type"
                                     value={form.source_type}
                                     onChange={handleInputChange}
@@ -339,17 +332,13 @@ export default function CameraManagement() {
                                 </select>
                             </div>
 
-                            <div
-                                style={{
-                                    gridColumn:
-                                        "span 2",
-                                }}
-                            >
-                                <label>
+                            <div className="camera-form-field camera-form-field-wide">
+                                <label className="camera-form-label">
                                     Source URL / Path
                                 </label>
 
                                 <input
+                                    className="camera-form-input"
                                     name="source_url"
                                     value={form.source_url}
                                     onChange={handleInputChange}
@@ -362,12 +351,13 @@ export default function CameraManagement() {
                                 />
                             </div>
 
-                            <div>
-                                <label>
+                            <div className="camera-form-field">
+                                <label className="camera-form-label">
                                     Process Every N Frames
                                 </label>
 
                                 <input
+                                    className="camera-form-input"
                                     type="number"
                                     name="process_every_n"
                                     min="1"
@@ -381,23 +371,18 @@ export default function CameraManagement() {
                             </div>
                         </div>
 
-                        <div
-                            style={{
-                                display: "flex",
-                                gap: "0.75rem",
-                                marginTop: "1.5rem",
-                            }}
-                        >
+                        <div className="camera-form-actions">
                             <button
                                 type="submit"
-                                className="button button-primary"
+                                className="camera-button camera-button-add"
                             >
+                                <Plus size={16} />
                                 Register Camera
                             </button>
 
                             <button
                                 type="button"
-                                className="button"
+                                className="camera-button camera-button-refresh"
                                 onClick={() =>
                                     setShowForm(false)
                                 }
@@ -434,7 +419,7 @@ export default function CameraManagement() {
                 ) : (
                     cameras.map((camera) => (
                         <div
-                            className="panel"
+                            className="camera-card"
                             key={camera.camera_id}
                         >
                             <div className="flex-between">
@@ -460,6 +445,7 @@ export default function CameraManagement() {
                             </div>
 
                             <div
+                                className="camera-details"
                                 style={{
                                     marginTop: "1rem",
                                     color:
@@ -504,19 +490,11 @@ export default function CameraManagement() {
                                 </div>
                             </div>
 
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexWrap:
-                                        "wrap",
-                                    gap: "0.5rem",
-                                    marginTop: "1.5rem",
-                                }}
-                            >
+                            <div className="camera-card-actions">
                                 {camera.status ===
                                 "running" ? (
                                     <button
-                                        className="button"
+                                        className="camera-button camera-button-stop"
                                         disabled={
                                             actionCamera ===
                                             camera.camera_id
@@ -527,15 +505,13 @@ export default function CameraManagement() {
                                             )
                                         }
                                     >
-                                        <Square
-                                            size={15}
-                                        />
+                                        <Square size={15} />
 
                                         Stop
                                     </button>
                                 ) : (
                                     <button
-                                        className="button button-primary"
+                                        className="camera-button camera-button-start"
                                         disabled={
                                             actionCamera ===
                                             camera.camera_id
@@ -546,31 +522,22 @@ export default function CameraManagement() {
                                             )
                                         }
                                     >
-                                        <Play
-                                            size={15}
-                                        />
+                                        <Play size={15} />
 
                                         Start
                                     </button>
                                 )}
-
                                 <button
-                                    className="button"
+                                    className="camera-button camera-button-remove"
                                     disabled={
-                                        camera.status ===
-                                            "running" ||
-                                        actionCamera ===
-                                            camera.camera_id
+                                        camera.status === "running" ||
+                                        actionCamera === camera.camera_id
                                     }
                                     onClick={() =>
-                                        handleDelete(
-                                            camera.camera_id
-                                        )
+                                        handleDelete(camera.camera_id)
                                     }
                                 >
-                                    <Trash2
-                                        size={15}
-                                    />
+                                    <Trash2 size={15} />
 
                                     Remove
                                 </button>

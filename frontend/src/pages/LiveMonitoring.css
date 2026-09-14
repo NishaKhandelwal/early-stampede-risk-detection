@@ -1,0 +1,55 @@
+/* =========================================================
+   LIVE MONITORING BUTTON
+   ========================================================= */
+
+.monitoring-refresh-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    min-height: 40px;
+    padding: 0.6rem 1rem;
+
+    border-radius: 9px;
+    border: 1px solid #343434;
+
+    background: #181818;
+    color: #e5e7eb;
+
+    font-size: 0.88rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.15s ease,
+        opacity 0.2s ease;
+}
+
+.monitoring-refresh-button:hover:not(:disabled) {
+    background: #242424;
+    border-color: #454545;
+    color: #ffffff;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.monitoring-refresh-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.monitoring-refresh-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.monitoring-refresh-button svg {
+    flex-shrink: 0;
+}

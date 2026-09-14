@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import AnalyticsCharts from "../analytics/AnalyticsCharts";
-
+import "./Analytics.css";
 import { getAnalytics } from "../services/analyticsService";
 import { getCameras } from "../services/cameraService";
 
@@ -132,7 +132,7 @@ export default function Analytics() {
                     </p>
 
                     <button
-                        className="button button-primary"
+                        className="analytics-retry-button"
                         onClick={loadAnalytics}
                     >
                         Retry
@@ -175,23 +175,16 @@ export default function Analytics() {
                         </p>
                     </div>
 
-                    <div>
-                        <label
-                            style={{
-                                marginRight: "0.5rem",
-                                color:
-                                    "var(--text-secondary)",
-                            }}
-                        >
+                    <div className="analytics-camera-selector">
+                        <label className="analytics-camera-label">
                             Camera:
                         </label>
 
                         <select
+                            className="analytics-camera-select"
                             value={selectedCamera}
                             onChange={(e) =>
-                                setSelectedCamera(
-                                    e.target.value
-                                )
+                                setSelectedCamera(e.target.value)
                             }
                         >
                             <option value="">
@@ -266,7 +259,7 @@ export default function Analytics() {
     // -----------------------------------------------------------
 
     return (
-        <div>
+        <div className="analytics-page">
             <div
                 className="flex-between"
                 style={{
@@ -290,23 +283,16 @@ export default function Analytics() {
                     </p>
                 </div>
 
-                <div>
-                    <label
-                        style={{
-                            marginRight: "0.5rem",
-                            color:
-                                "var(--text-secondary)",
-                        }}
-                    >
+                <div className="analytics-camera-selector">
+                    <label className="analytics-camera-label">
                         Camera:
                     </label>
 
                     <select
+                        className="analytics-camera-select"
                         value={selectedCamera}
                         onChange={(e) =>
-                            setSelectedCamera(
-                                e.target.value
-                            )
+                            setSelectedCamera(e.target.value)
                         }
                     >
                         <option value="">
