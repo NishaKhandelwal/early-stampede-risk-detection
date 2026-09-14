@@ -1,0 +1,103 @@
+/* =========================================================
+   ANALYTICS
+   ========================================================= */
+
+.analytics-page {
+    width: 100%;
+}
+
+
+/* =========================================================
+   CAMERA SELECTOR
+   ========================================================= */
+
+.analytics-camera-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analytics-camera-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.analytics-camera-select {
+    min-width: 125px;
+    min-height: 38px;
+
+    padding: 0.5rem 0.7rem;
+
+    border: 1px solid #343434;
+    border-radius: 8px;
+
+    background: #181818;
+    color: #f8fafc;
+
+    font-size: 0.88rem;
+    font-weight: 600;
+
+    cursor: pointer;
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.analytics-camera-select:hover {
+    background: #242424;
+    border-color: #454545;
+}
+
+.analytics-camera-select:focus {
+    border-color: #e0c000;
+
+    box-shadow:
+        0 0 0 3px rgba(224, 192, 0, 0.1);
+}
+
+.analytics-camera-select option {
+    background: #181818;
+    color: #f8fafc;
+}
+
+
+/* =========================================================
+   RETRY BUTTON
+   ========================================================= */
+
+.analytics-retry-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 40px;
+    padding: 0.6rem 1rem;
+
+    border: 1px solid #e0c000;
+    border-radius: 9px;
+
+    background: #e0c000;
+    color: #111111;
+
+    font-size: 0.88rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.15s ease;
+}
+
+.analytics-retry-button:hover {
+    background: #f0cf00;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 18px rgba(224, 192, 0, 0.25);
+}

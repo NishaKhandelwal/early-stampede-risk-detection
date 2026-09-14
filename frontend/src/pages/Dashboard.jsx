@@ -2,36 +2,174 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Camera, AlertTriangle, ShieldAlert, Users, TrendingUp, X, Activity, ShieldCheck } from 'lucide-react';
 import "./Dashboard.css";
 import { useAlertContext } from "../context/AlertContext";
-import { uploadVideo } from "../services/detectionService";
-import socket from "../services/websocket";
+import { getCameras } from "../services/cameraService";
 export default function Dashboard() {
-  const { dashboardData, liveFrames } = useAlertContext();
+  const { dashboardData, liveFrames, alerts } = useAlertContext();
+  const [cameras, setCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
   const [showAlert, setShowAlert] = useState(false);
-  const [videoSource, setVideoSource] = useState(null);
   const [alertSector, setAlertSector] = useState(null);
-  const [processedVideo, setProcessedVideo] = useState(null);
-  const [processing, setProcessing] = useState(false);
   const [liveAnalysis, setLiveAnalysis] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  //const [liveFrame, setLiveFrame] = useState(null);
-  const MAIN_CAMERA_ID = "CAM-RTSP-01";
+  const displayAnalysis = liveAnalysis;
+  const MAIN_CAMERA_ID = selectedCameraId;
   const mainCameraData =
-    dashboardData?.[MAIN_CAMERA_ID] || null;
+    MAIN_CAMERA_ID
+      ? dashboardData?.[MAIN_CAMERA_ID] || null
+      : null;
 
   const mainLiveFrame =
-    liveFrames?.[MAIN_CAMERA_ID] || null;
+    MAIN_CAMERA_ID
+      ? liveFrames?.[MAIN_CAMERA_ID] || null
+      : null;
 
+  const selectedCamera =
+    cameras.find(
+      (camera) => camera.camera_id === MAIN_CAMERA_ID
+    ) || null;
+  const runningCameras = cameras.filter(
+    (camera) => camera.status === "running"
+  );
+
+  const camerasOnline = runningCameras.length;
+
+  const totalPeopleDetected = runningCameras.reduce(
+    (total, camera) => {
+      const data = dashboardData?.[camera.camera_id];
+
+      const people =
+        data?.current?.people_count ??
+        data?.people_count ??
+        0;
+
+      return total + people;
+    },
+    0
+  );
+
+  const recentAlertCount = alerts.length;
+  const currentRisk =
+    mainCameraData?.current?.risk_level ??
+    mainCameraData?.risk_level ??
+    displayAnalysis?.final_risk_level ??
+    "LOW";
+
+  const currentDensity =
+    mainCameraData?.current?.density_level ??
+    mainCameraData?.density_level ??
+    displayAnalysis?.final_density_level ??
+    "LOW";
+
+  const currentMotion =
+    mainCameraData?.current?.motion_level ??
+    mainCameraData?.motion_level ??
+    displayAnalysis?.final_motion_level ??
+    "LOW";
+
+  const currentPeople =
+    mainCameraData?.current?.people_count ??
+    mainCameraData?.people_count ??
+    displayAnalysis?.max_people_count ??
+    0;
+  const getRiskRecommendation = (risk) => {
+    switch (String(risk).toUpperCase()) {
+      case "WARNING":
+      case "MEDIUM":
+        return "Monitor the area and control crowd flow if required.";
+
+      case "HIGH":
+        return "Immediate attention required. Monitor the area and manage crowd movement.";
+
+      case "CRITICAL":
+      case "EXTREME":
+        return "Critical crowd condition detected. Initiate appropriate emergency response procedures.";
+
+      default:
+        return "Crowd conditions are currently stable.";
+    }
+  };
+
+  const getRiskColor = (risk) => {
+    switch (String(risk).toUpperCase()) {
+      case "CRITICAL":
+      case "EXTREME":
+      case "HIGH":
+        return "#ef4444";
+
+      case "WARNING":
+      case "MEDIUM":
+        return "#f59e0b";
+
+      default:
+        return "#22c55e";
+    }
+  };
+
+  const currentRiskColor = getRiskColor(currentRisk);
+  const riskRecommendation = getRiskRecommendation(currentRisk);
   const mainLiveFrameSrc =
     mainLiveFrame
       ? mainLiveFrame.startsWith("data:image")
         ? mainLiveFrame
         : `data:image/jpeg;base64,${mainLiveFrame}`
       : null;
-  const displayAnalysis = mainCameraData
-    ? liveAnalysis
-    : analysisResult;
 
   const audioCtxRef = useRef(null);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCameras = async () => {
+      try {
+        const data = await getCameras();
+
+        const cameraList = Array.isArray(data)
+          ? data
+          : data?.cameras || [];
+
+        if (!mounted) return;
+
+        setCameras(cameraList);
+
+        setSelectedCameraId((current) => {
+          if (
+            current &&
+            cameraList.some(
+              (camera) => camera.camera_id === current
+            )
+          ) {
+            return current;
+          }
+
+          const runningCamera = cameraList.find(
+            (camera) => camera.status === "running"
+          );
+
+          if (runningCamera) {
+            return runningCamera.camera_id;
+          }
+
+          return cameraList[0]?.camera_id || "";
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load cameras for dashboard:",
+          error
+        );
+
+        if (mounted) {
+          setCameras([]);
+        }
+      }
+    };
+
+    loadCameras();
+
+    const interval = setInterval(loadCameras, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
   useEffect(() => {
     if (!mainCameraData) return;
 
@@ -96,44 +234,6 @@ export default function Dashboard() {
             [],
     }));
 }, [mainCameraData]);
-  
-  const handleVideoUpload = async (e) => {
-
-    const file = e.target.files[0];
-
-    if (!file) return;
-
-    setProcessing(true);
-    setProcessedVideo(null);
-    setVideoSource(URL.createObjectURL(file));
-
-    try {
-
-        const result = await uploadVideo(file);
-
-        console.log("AI Result:", result);
-
-        setAnalysisResult(result);
-        setProcessedVideo(result.processed_video);
-
-        if (
-            result.final_risk_level === "HIGH" ||
-            result.final_risk_level === "WARNING"
-        ) {
-            triggerAlert("B");
-        }
-
-    } catch (error) {
-
-        console.error("Video processing failed", error);
-
-    } finally {
-
-        setProcessing(false);
-
-    }
-
-};
   const generateMotionPoints = () => {
 
     if (
@@ -235,88 +335,475 @@ export default function Dashboard() {
           alignItems: 'center',
           backdropFilter: 'blur(10px)'
         }}>
-          <div style={{
-            backgroundColor: 'rgba(20, 20, 20, 0.98)',
-            border: '2px solid rgba(255, 77, 77, 0.85)',
-            borderRadius: '22px',
-            padding: '1.5rem',
-            width: '92%',
-            maxWidth: '520px',
-            textAlign: 'left',
-            boxShadow: '0 0 40px rgba(0, 0, 0, 0.6)',
-            animation: 'modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            overflow: 'hidden'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ color: '#ff5d5d', fontWeight: '800', letterSpacing: '0.35em', fontSize: '0.78rem' }}>ALERT</span>
-              <span style={{ background: 'linear-gradient(90deg, rgba(255,77,77,0.95), rgba(255,143,143,0.95))', color: '#000', padding: '0.25rem 0.85rem', borderRadius: '999px', fontWeight: '700', fontSize: '0.75rem', letterSpacing: '0.08em' }}>HIGH</span>
+          <div
+            style={{
+              backgroundColor: "rgba(20, 20, 20, 0.98)",
+              border: `2px solid ${currentRiskColor}`,
+              borderRadius: "22px",
+              padding: "1.5rem",
+              width: "92%",
+              maxWidth: "520px",
+              textAlign: "left",
+              boxShadow: "0 0 40px rgba(0, 0, 0, 0.6)",
+              animation:
+                "modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <span
+                style={{
+                  color: currentRiskColor,
+                  fontWeight: "800",
+                  letterSpacing: "0.25em",
+                  fontSize: "0.78rem",
+                }}
+              >
+                SYSTEM ALERT
+              </span>
+
+              <span
+                style={{
+                  background: currentRiskColor,
+                  color: "#000",
+                  padding: "0.25rem 0.85rem",
+                  borderRadius: "999px",
+                  fontWeight: "700",
+                  fontSize: "0.75rem",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {currentRisk}
+              </span>
             </div>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: 'rgba(255,77,77,0.12)', border: '1px solid rgba(255,77,77,0.3)', display: 'grid', placeItems: 'center' }}>
-                  <AlertTriangle size={26} color="var(--alert-red)" />
-                </div>
-                <div>
-                  <h1 style={{ color: '#fff', margin: '0 0 0.25rem 0', fontSize: '1.35rem' }}>Sector B Alert</h1>
-                  <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem' }}>Critical crowd density detected at Sector B Bridge. Immediate perimeter control advised.</p>
-                </div>
+
+            {/* Camera information */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.85rem",
+                marginBottom: "1.25rem",
+              }}
+            >
+              <div
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "16px",
+                  backgroundColor: `${currentRiskColor}1F`,
+                  border: `1px solid ${currentRiskColor}55`,
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <AlertTriangle
+                  size={26}
+                  color={currentRiskColor}
+                />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                <div style={{ background: 'rgba(255,77,77,0.04)', border: '1px solid rgba(255,77,77,0.12)', borderRadius: '14px', padding: '0.95rem' }}>
-                  <div style={{ color: '#9ca3af', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Location</div>
-                  <div style={{ color: '#fff', fontSize: '1rem', fontWeight: '700' }}>Sector B Bridge</div>
-                </div>
-                <div style={{ background: 'rgba(255,77,77,0.04)', border: '1px solid rgba(255,77,77,0.12)', borderRadius: '14px', padding: '0.95rem' }}>
-                  <div style={{ color: '#9ca3af', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Density</div>
-                  <div style={{ color: '#ff9ca3', fontSize: '1rem', fontWeight: '700' }}>Extreme</div>
-                </div>
-              </div>
+              <div>
+                <h1
+                  style={{
+                    color: "#fff",
+                    margin: "0 0 0.25rem 0",
+                    fontSize: "1.35rem",
+                  }}
+                >
+                  {MAIN_CAMERA_ID || "Selected Camera"}
+                </h1>
 
-              <div style={{ background: 'rgba(255,77,77,0.05)', border: '1px solid rgba(255,77,77,0.14)', borderRadius: '14px', padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                  <span style={{ color: '#f8fafc', fontWeight: '700' }}>Threat Vector</span>
-                  <span style={{ color: '#ffb4b4', fontWeight: '700', fontSize: '0.82rem' }}>LOCKDOWN ADVISED</span>
-                </div>
-                <div style={{ height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: '0.85rem' }}>
-                  <div style={{ width: '92%', height: '100%', background: 'linear-gradient(90deg, rgba(255,77,77,0.95), rgba(255,143,143,0.95))' }}></div>
-                </div>
-                <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>Activate sector lockdown and reroute footfall. Maintain clear access for response teams.</p>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#cbd5e1",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {selectedCamera?.status === "running"
+                    ? "Live surveillance alert"
+                    : "Camera is not currently running"}
+                </p>
               </div>
             </div>
 
-            <div className="flex-between" style={{ gap: '1rem', marginTop: '1.5rem' }}>
+            {/* Current metrics */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: "0.75rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "12px",
+                  padding: "0.9rem",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#9ca3af",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.1em",
+                    marginBottom: "0.4rem",
+                  }}
+                >
+                  PEOPLE
+                </div>
+
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "1.1rem",
+                    fontWeight: "700",
+                  }}
+                >
+                  {currentPeople}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "12px",
+                  padding: "0.9rem",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#9ca3af",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.1em",
+                    marginBottom: "0.4rem",
+                  }}
+                >
+                  DENSITY
+                </div>
+
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "1.1rem",
+                    fontWeight: "700",
+                  }}
+                >
+                  {currentDensity}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "12px",
+                  padding: "0.9rem",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#9ca3af",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.1em",
+                    marginBottom: "0.4rem",
+                  }}
+                >
+                  MOTION
+                </div>
+
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "1.1rem",
+                    fontWeight: "700",
+                  }}
+                >
+                  {currentMotion}
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendation */}
+            <div
+              style={{
+                background: `${currentRiskColor}0D`,
+                border: `1px solid ${currentRiskColor}33`,
+                borderRadius: "14px",
+                padding: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  color: "#f8fafc",
+                  fontWeight: "700",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                Recommended Action
+              </div>
+
+              <p
+                style={{
+                  color: "#cbd5e1",
+                  fontSize: "0.9rem",
+                  lineHeight: "1.5",
+                  margin: 0,
+                }}
+              >
+                {riskRecommendation}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div
+              className="flex-between"
+              style={{
+                gap: "1rem",
+                marginTop: "1.5rem",
+              }}
+            >
               <button
                 onClick={() => setShowAlert(false)}
-                style={{ flex: 1, padding: '1rem', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#e2e8f0', borderRadius: '14px', cursor: 'pointer' }}
+                style={{
+                  flex: 1,
+                  padding: "1rem",
+                  backgroundColor: "transparent",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  color: "#e2e8f0",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                }}
               >
                 Acknowledge
               </button>
+
               <button
                 onClick={() => setShowAlert(false)}
-                style={{ flex: 1, padding: '1rem', backgroundColor: 'var(--alert-red)', border: 'none', color: '#fff', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}
+                style={{
+                  flex: 1,
+                  padding: "1rem",
+                  backgroundColor: currentRiskColor,
+                  border: "none",
+                  color: "#fff",
+                  borderRadius: "14px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                }}
               >
-                Initiate Lockdown
+                Close Alert
               </button>
             </div>
           </div>
         </div>
       )}
-
       <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ margin: 0 }}>Integrated Command Centre</h1>
-          <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>Zonal Management & Live Monitoring</p>
+          <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>
+            Zonal Management & Live Monitoring
+          </p>
         </div>
-        <button
-          className="btn-primary"
-          style={{ backgroundColor: 'var(--alert-red)', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          onClick={() => triggerAlert('B')}
-        >
-          <AlertTriangle size={18} /> Simulate Sector B Alert
-        </button>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+
+          {cameras.length > 0 && (
+            <select
+              value={selectedCameraId}
+              onChange={(e) => setSelectedCameraId(e.target.value)}
+              style={{
+                background: "#0d1114",
+                color: "#fff",
+                border: "1px solid #1e252b",
+                borderRadius: "8px",
+                padding: "0.65rem 0.9rem",
+                outline: "none",
+              }}
+            >
+              {cameras.map((camera) => (
+                <option
+                  key={camera.camera_id}
+                  value={camera.camera_id}
+                >
+                  {camera.camera_id}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            className="btn-primary"
+            style={{
+              backgroundColor: 'var(--alert-red)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onClick={() => triggerAlert('B')}
+          >
+            <AlertTriangle size={18} /> Test Demo Alert
+          </button>
+
+        </div>
       </div>
-      
+      {/* ================================= */}
+      {/* Dashboard — SYSTEM STATUS */}
+      {/* ================================= */}
+
+      <div
+        className="panel"
+        style={{
+          marginBottom: "1.5rem",
+          padding: "1.25rem 1.5rem",
+        }}
+      >
+        <div
+          style={{
+            borderBottom: "1px solid #1e252b",
+            paddingBottom: "0.75rem",
+            marginBottom: "1rem",
+          }}
+        >
+          <span
+            style={{
+              color: "#ffffff",
+              letterSpacing: "2px",
+              fontWeight: "bold",
+              fontSize: "0.8rem",
+            }}
+          >
+            SYSTEM STATUS
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+
+          {/* CAMERAS ONLINE */}
+          <div>
+            <div
+              style={{
+                color: "#718096",
+                fontSize: "0.8rem",
+                marginBottom: "0.35rem",
+              }}
+            >
+              CAMERAS ONLINE
+            </div>
+
+            <div
+              style={{
+                color: "#22c55e",
+                fontSize: "1.8rem",
+                fontWeight: "700",
+              }}
+            >
+              {camerasOnline}
+            </div>
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "0.75rem",
+              }}
+            >
+              of {cameras.length} registered
+            </div>
+          </div>
+
+
+          {/* PEOPLE DETECTED */}
+          <div>
+            <div
+              style={{
+                color: "#718096",
+                fontSize: "0.8rem",
+                marginBottom: "0.35rem",
+              }}
+            >
+              PEOPLE DETECTED
+            </div>
+
+            <div
+              style={{
+                color: "#ffffff",
+                fontSize: "1.8rem",
+                fontWeight: "700",
+              }}
+            >
+              {totalPeopleDetected}
+            </div>
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "0.75rem",
+              }}
+            >
+              across online cameras
+            </div>
+          </div>
+
+
+          {/* RECENT ALERTS */}
+          <div>
+            <div
+              style={{
+                color:
+                  recentAlertCount > 0
+                    ? "#ef4444"
+                    : "#22c55e",
+                fontSize: "0.8rem",
+                marginBottom: "0.35rem",
+              }}
+            >
+              RECENT ALERTS
+            </div>
+
+            <div
+              style={{
+                color:
+                  recentAlertCount > 0
+                    ? "#ef4444"
+                    : "#22c55e",
+                fontSize: "1.8rem",
+                fontWeight: "700",
+              }}
+            >
+              {recentAlertCount}
+            </div>
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "0.75rem",
+              }}
+            >
+              detected this session
+            </div>
+          </div>
+
+        </div>
+      </div>
     
       <div className="dashboard-layout">
 
@@ -336,7 +823,9 @@ export default function Dashboard() {
               fontWeight: 'bold',
               animation: 'pulse 2s infinite'
             }}>
-              RECORDING
+              {selectedCamera?.status === "running"
+                ? "ONLINE"
+                : selectedCamera?.status?.toUpperCase() || "OFFLINE"}
             </span>
           </div>
 
@@ -403,103 +892,6 @@ export default function Dashboard() {
                       LIVE · {MAIN_CAMERA_ID}
                   </div>
               </div>
-          ) : videoSource ? (
-              <div
-                  style={{
-                      width: "100%",
-                      height: "100%",
-                      position: "relative",
-                      overflow: "hidden",
-                  }}
-              >
-                  <video
-                      src={processedVideo || videoSource}
-                      autoPlay
-                      loop
-                      muted
-                      controls
-                      style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          filter: "brightness(0.82)",
-                      }}
-                  />
-
-                  {processing && (
-                      <div
-                          style={{
-                              position: "absolute",
-                              top: "20px",
-                              right: "20px",
-                              width: "260px",
-                              padding: "16px",
-                              background: "rgba(15, 23, 42, 0.55)",
-                              backdropFilter: "blur(8px)",
-                              WebkitBackdropFilter: "blur(8px)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              borderRadius: "12px",
-                              color: "#fff",
-                              zIndex: 20,
-                              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-                          }}
-                      >
-                          <div
-                              style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "12px",
-                                  marginBottom: "12px",
-                              }}
-                          >
-                              <div
-                                  style={{
-                                      width: "22px",
-                                      height: "22px",
-                                      border: "3px solid rgba(255,255,255,0.2)",
-                                      borderTop: "3px solid #00e5ff",
-                                      borderRadius: "50%",
-                                      animation: "spin 0.9s linear infinite",
-                                  }}
-                              />
-
-                              <div>
-                                  <div
-                                      style={{
-                                          fontWeight: 600,
-                                          fontSize: "15px",
-                                      }}
-                                  >
-                                      AI Processing
-                                  </div>
-
-                                  <div
-                                      style={{
-                                          fontSize: "12px",
-                                          color: "#94a3b8",
-                                      }}
-                                  >
-                                      Live analysis running
-                                  </div>
-                              </div>
-                          </div>
-
-                          <div
-                              style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "8px",
-                                  fontSize: "13px",
-                              }}
-                          >
-                              <div>👤 Detecting Crowd</div>
-                              <div>📊 Density Analysis</div>
-                              <div>🏃 Motion Analysis</div>
-                              <div>⚠ Risk Assessment</div>
-                          </div>
-                      </div>
-                  )}
-              </div>
           ) : (
               <div
                   className="flex-center"
@@ -510,26 +902,20 @@ export default function Dashboard() {
                       gap: "1rem",
                   }}
               >
-                  <span>[ Main Camera AI Feed ]</span>
+                  <Camera size={36} style={{ opacity: 0.5 }} />
 
-                  <label
-                      className="btn-primary"
+                  <span>
+                      No live feed available for {MAIN_CAMERA_ID || "selected camera"}
+                  </span>
+
+                  <span
                       style={{
-                          cursor: "pointer",
-                          backgroundColor: "var(--panel-grey)",
-                          color: "var(--text-primary)",
-                          border: "1px solid rgba(255,255,255,0.1)",
+                          fontSize: "0.8rem",
+                          color: "#64748b",
                       }}
                   >
-                      Feed Test Video
-
-                      <input
-                          type="file"
-                          accept="video/*"
-                          onChange={handleVideoUpload}
-                          style={{ display: "none" }}
-                      />
-                  </label>
+                      Start the camera from Live Monitoring.
+                  </span>
               </div>
           )}
           </div>
@@ -892,6 +1278,148 @@ export default function Dashboard() {
               </div>
 
             )}
+        </div>
+      </div>
+      {/* ================================= */}
+      {/* CAMERA OVERVIEW */}
+      {/* ================================= */}
+
+      <div
+        className="panel"
+        style={{
+          marginTop: "1.5rem",
+          padding: "1.25rem",
+        }}
+      >
+        <div
+          style={{
+            borderBottom: "1px solid #1e252b",
+            paddingBottom: "0.75rem",
+            marginBottom: "1rem",
+          }}
+        >
+          <span
+            style={{
+              color: "#ffffff",
+              letterSpacing: "2px",
+              fontWeight: "bold",
+              fontSize: "0.8rem",
+            }}
+          >
+            CAMERA OVERVIEW
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.65rem",
+          }}
+        >
+          {cameras.length === 0 ? (
+            <div
+              style={{
+                color: "#64748b",
+                padding: "1rem 0",
+              }}
+            >
+              No cameras registered.
+            </div>
+          ) : (
+            cameras.map((camera) => {
+              const data =
+                dashboardData?.[camera.camera_id];
+
+              const people =
+                data?.current?.people_count ??
+                data?.people_count ??
+                0;
+
+              const risk =
+                data?.current?.risk_level ??
+                data?.risk_level ??
+                "LOW";
+
+              const isRunning =
+                camera.status === "running";
+
+              return (
+                <button
+                  key={camera.camera_id}
+                  onClick={() =>
+                    setSelectedCameraId(
+                      camera.camera_id
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(150px, 1.5fr) minmax(100px, 1fr) minmax(100px, 1fr) minmax(90px, 0.7fr)",
+                    gap: "1rem",
+                    alignItems: "center",
+                    padding: "0.9rem 1rem",
+                    background:
+                      camera.camera_id ===
+                      selectedCameraId
+                        ? "rgba(59, 130, 246, 0.08)"
+                        : "#11161b",
+                    border:
+                      camera.camera_id ===
+                      selectedCameraId
+                        ? "1px solid rgba(59,130,246,0.35)"
+                        : "1px solid #1f2937",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+
+                  <span style={{ fontWeight: "700" }}>
+                    {camera.camera_id}
+                  </span>
+
+                  <span
+                    style={{
+                      color: isRunning
+                        ? "#22c55e"
+                        : "#64748b",
+                      fontWeight: "600",
+                    }}
+                  >
+                    ●{" "}
+                    {isRunning
+                      ? "ONLINE"
+                      : String(
+                          camera.status ||
+                            "OFFLINE"
+                        ).toUpperCase()}
+                  </span>
+
+                  <span style={{ color: "#cbd5e1" }}>
+                    👥 {people} people
+                  </span>
+
+                  <span
+                    style={{
+                      color:
+                        risk === "HIGH"
+                          ? "#ef4444"
+                          : risk === "WARNING"
+                          ? "#f59e0b"
+                          : "#22c55e",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {risk}
+                  </span>
+
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
