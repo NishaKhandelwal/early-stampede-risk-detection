@@ -31,6 +31,70 @@ logger = get_logger("frame_processor")
 
 # camera_id -> {"thread": Thread, "camera": RTSPCamera, "stop_flag": Event}
 _active_streams = {}
+# camera_id -> alert state
+_alert_states = {}
+
+# Minimum time between repeated alerts for the same camera/risk condition.
+ALERT_COOLDOWN_SECONDS = 30
+def should_emit_alert(camera_id, risk_level):
+    """
+    Decide whether a risk event should generate a new alert.
+
+    A continuous WARNING/HIGH RISK condition should not create
+    a new alert on every processed frame.
+
+    Invalid / missing risk levels are ignored.
+    """
+
+    # Never create an alert for an invalid risk state.
+    if not risk_level:
+        return False
+
+    now = time.time()
+
+    state = _alert_states.get(camera_id)
+
+    # No previous alert for this camera.
+    if state is None:
+        _alert_states[camera_id] = {
+            "risk_level": risk_level,
+            "last_alert_time": now,
+        }
+
+        return risk_level in ALERTABLE_RISK_LEVELS
+
+    previous_risk = state["risk_level"]
+    last_alert_time = state["last_alert_time"]
+
+    # Risk returned to NORMAL or another non-alertable state.
+    if risk_level not in ALERTABLE_RISK_LEVELS:
+        _alert_states[camera_id] = {
+            "risk_level": risk_level,
+            "last_alert_time": last_alert_time,
+        }
+
+        return False
+
+    # Risk level changed.
+    if risk_level != previous_risk:
+        _alert_states[camera_id] = {
+            "risk_level": risk_level,
+            "last_alert_time": now,
+        }
+
+        return True
+
+    # Same risk condition is continuing.
+    if now - last_alert_time < ALERT_COOLDOWN_SECONDS:
+        return False
+
+    # Cooldown expired.
+    _alert_states[camera_id] = {
+        "risk_level": risk_level,
+        "last_alert_time": now,
+    }
+
+    return True
 
 
 class FrameProcessor(threading.Thread):
@@ -152,40 +216,40 @@ class FrameProcessor(threading.Thread):
                 # Alerts
                 # --------------------------------------------------
 
-                if result["risk_level"] in ALERTABLE_RISK_LEVELS:
+                if should_emit_alert(
+                    self.camera_id,
+                    result["risk_level"]
+                ):
+                    try:
+                        save_alert(
+                            camera_id=self.camera_id,
+                            risk_level=result["risk_level"],
+                            message=result.get("risk_message"),
+                            people_count=result.get("people_count", 0),
+                            density_level=result.get("density_level"),
+                            motion_level=result.get("motion_level"),
+                        )
 
-                    alert_id = save_alert(
-                        camera_id=self.camera_id,
-                        risk_level=result["risk_level"],
-                        message=result["risk_message"],
-                        people_count=result["people_count"],
-                        density_level=result["density_level"],
-                        motion_level=result["motion_level"],
-                    )
+                        emit_new_alert({
+                            "camera_id": self.camera_id,
+                            "risk_level": result["risk_level"],
+                            "message": result.get("risk_message"),
+                            "people_count": result.get("people_count", 0),
+                            "density_level": result.get("density_level"),
+                            "motion_level": result.get("motion_level"),
+                        })
 
-                    emit_new_alert({
-                        "id": alert_id,
-                        "camera_id": self.camera_id,
-                        "risk_level": result["risk_level"],
-                        "message": result["risk_message"],
-                        "people_count": result["people_count"],
-                        "density_level": result["density_level"],
-                        "motion_level": result["motion_level"],
-                    })
+                    except Exception as e:
+                        logger.exception(
+                            f"[{self.camera_id}] Alert handling failed: {e}"
+                        )
 
-        except Exception as e:
-
-            logger.exception(
-                f"[{self.camera_id}] Unexpected stream processing error: {e}"
-            )
 
         finally:
-
             self.camera.release()
 
-            # Remove this processor from the active registry
-            # when the thread finishes naturally or is stopped.
             _active_streams.pop(self.camera_id, None)
+            _alert_states.pop(self.camera_id, None)
 
             logger.info(
                 f"[{self.camera_id}] Stream processing stopped"
@@ -241,6 +305,7 @@ def stop_stream(camera_id):
         processor.join(timeout=2)
 
     _active_streams.pop(camera_id, None)
+    _alert_states.pop(camera_id, None)
 
     return True, "Stream stopped"
 def get_active_streams():

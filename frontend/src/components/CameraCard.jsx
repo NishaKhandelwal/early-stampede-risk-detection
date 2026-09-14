@@ -1,4 +1,5 @@
 import React from "react";
+import { useAlertContext } from "../context/AlertContext";
 import { Maximize2, Play, Square, Trash2 } from "lucide-react";
 import LiveFeedViewer from "./LiveFeedViewer";
 
@@ -10,7 +11,27 @@ export default function CameraCard({
     busy,
     monitoringOnly = false,
 }) {
+    const { dashboardData } = useAlertContext();
+
     const isRunning = camera.status === "running";
+
+    const metrics =
+        dashboardData?.[camera.camera_id] || null;
+
+    const peopleCount =
+        metrics?.people_count ?? "--";
+
+    const densityLevel =
+        metrics?.density_level ?? "--";
+
+    const motionScore =
+        metrics?.motion_score != null
+            ? Number(metrics.motion_score).toFixed(2)
+            : "--";
+
+    const riskLevel =
+        metrics?.risk_level ?? "--";
+    
 
     return (
         <div
@@ -44,6 +65,127 @@ export default function CameraCard({
                 </div>
 
                 <Maximize2 size={20} />
+            </div>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: "0.6rem",
+                    marginTop: "1rem",
+                }}
+            >
+                <div
+                    style={{
+                        padding: "0.75rem",
+                        background: "#11161b",
+                        border: "1px solid #1f2937",
+                        borderRadius: "8px",
+                    }}
+                >
+                    <div
+                        style={{
+                            color: "#718096",
+                            fontSize: "0.75rem",
+                        }}
+                    >
+                        PEOPLE
+                    </div>
+
+                    <strong
+                        style={{
+                            color: "#fff",
+                            fontSize: "1.1rem",
+                        }}
+                    >
+                        {peopleCount}
+                    </strong>
+                </div>
+
+                <div
+                    style={{
+                        padding: "0.75rem",
+                        background: "#11161b",
+                        border: "1px solid #1f2937",
+                        borderRadius: "8px",
+                    }}
+                >
+                    <div
+                        style={{
+                            color: "#718096",
+                            fontSize: "0.75rem",
+                        }}
+                    >
+                        DENSITY
+                    </div>
+
+                    <strong
+                        style={{
+                            color: "#fff",
+                            fontSize: "1.1rem",
+                        }}
+                    >
+                        {densityLevel}
+                    </strong>
+                </div>
+
+                <div
+                    style={{
+                        padding: "0.75rem",
+                        background: "#11161b",
+                        border: "1px solid #1f2937",
+                        borderRadius: "8px",
+                    }}
+                >
+                    <div
+                        style={{
+                            color: "#718096",
+                            fontSize: "0.75rem",
+                        }}
+                    >
+                        MOTION
+                    </div>
+
+                    <strong
+                        style={{
+                            color: "#fff",
+                            fontSize: "1.1rem",
+                        }}
+                    >
+                        {motionScore}
+                    </strong>
+                </div>
+
+                <div
+                    style={{
+                        padding: "0.75rem",
+                        background: "#11161b",
+                        border: "1px solid #1f2937",
+                        borderRadius: "8px",
+                    }}
+                >
+                    <div
+                        style={{
+                            color: "#718096",
+                            fontSize: "0.75rem",
+                        }}
+                    >
+                        RISK
+                    </div>
+
+                    <strong
+                        style={{
+                            color:
+                                riskLevel === "HIGH"
+                                    ? "#ef4444"
+                                    : riskLevel === "WARNING"
+                                    ? "#f59e0b"
+                                    : "#22c55e",
+                            fontSize: "1.1rem",
+                        }}
+                    >
+                        {riskLevel}
+                    </strong>
+                </div>
             </div>
 
             {/* Live Feed */}

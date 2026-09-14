@@ -3,24 +3,67 @@ import React, { useEffect, useState } from "react";
 import AnalyticsCharts from "../analytics/AnalyticsCharts";
 
 import { getAnalytics } from "../services/analyticsService";
+import { getCameras } from "../services/cameraService";
 
 export default function Analytics() {
     const [analytics, setAnalytics] = useState(null);
+    const [cameras, setCameras] = useState([]);
+    const [selectedCamera, setSelectedCamera] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // -----------------------------------------------------------
+    // Load available cameras
+    // -----------------------------------------------------------
+
+    useEffect(() => {
+        loadCameras();
+    }, []);
+
+    async function loadCameras() {
+        try {
+            const data = await getCameras();
+
+            console.log("Analytics cameras:", data);
+
+            setCameras(
+                Array.isArray(data)
+                    ? data
+                    : data?.cameras || []
+            );
+        } catch (err) {
+            console.error(
+                "Failed to load cameras for analytics:",
+                err
+            );
+
+            // Camera loading failure should not prevent
+            // the global analytics view from working.
+            setCameras([]);
+        }
+    }
+
+    // -----------------------------------------------------------
+    // Load analytics
+    // -----------------------------------------------------------
+
     useEffect(() => {
         loadAnalytics();
-    }, []);
+    }, [selectedCamera]);
 
     async function loadAnalytics() {
         try {
             setLoading(true);
             setError("");
 
-            const data = await getAnalytics();
+            const data = await getAnalytics(
+                selectedCamera || null
+            );
 
-            console.log("Analytics API response:", data);
+            console.log(
+                "Analytics API response:",
+                data
+            );
 
             setAnalytics(data);
         } catch (err) {
@@ -38,6 +81,10 @@ export default function Analytics() {
         }
     }
 
+    // -----------------------------------------------------------
+    // Loading
+    // -----------------------------------------------------------
+
     if (loading) {
         return (
             <div>
@@ -45,7 +92,8 @@ export default function Analytics() {
 
                 <p
                     style={{
-                        color: "var(--text-secondary)",
+                        color:
+                            "var(--text-secondary)",
                     }}
                 >
                     Loading analytics...
@@ -53,6 +101,10 @@ export default function Analytics() {
             </div>
         );
     }
+
+    // -----------------------------------------------------------
+    // Error
+    // -----------------------------------------------------------
 
     if (error) {
         return (
@@ -93,6 +145,10 @@ export default function Analytics() {
     const snapshots =
         analytics?.snapshots || [];
 
+    // -----------------------------------------------------------
+    // No data
+    // -----------------------------------------------------------
+
     if (snapshots.length === 0) {
         return (
             <div>
@@ -118,6 +174,44 @@ export default function Analytics() {
                             risk analytics
                         </p>
                     </div>
+
+                    <div>
+                        <label
+                            style={{
+                                marginRight: "0.5rem",
+                                color:
+                                    "var(--text-secondary)",
+                            }}
+                        >
+                            Camera:
+                        </label>
+
+                        <select
+                            value={selectedCamera}
+                            onChange={(e) =>
+                                setSelectedCamera(
+                                    e.target.value
+                                )
+                            }
+                        >
+                            <option value="">
+                                All Cameras
+                            </option>
+
+                            {cameras.map((camera) => (
+                                <option
+                                    key={
+                                        camera.camera_id
+                                    }
+                                    value={
+                                        camera.camera_id
+                                    }
+                                >
+                                    {camera.camera_id}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="panel">
@@ -140,9 +234,11 @@ export default function Analytics() {
         );
     }
 
+    // -----------------------------------------------------------
+    // Chart data
+    // -----------------------------------------------------------
+
     const chartData = snapshots
-        .slice()
-        .reverse()
         .map((item, index) => ({
             frame: index + 1,
 
@@ -156,12 +252,18 @@ export default function Analytics() {
                 item.motion_score ?? 0,
 
             risk:
-                item.risk_level === "HIGH RISK"
+                item.risk_level === "HIGH RISK" ||
+                item.risk_level === "HIGH"
                     ? 3
-                    : item.risk_level === "WARNING"
+                    : item.risk_level === "WARNING" ||
+                    item.risk_level === "MEDIUM"
                     ? 2
                     : 1,
         }));
+
+    // -----------------------------------------------------------
+    // Render
+    // -----------------------------------------------------------
 
     return (
         <div>
@@ -186,6 +288,44 @@ export default function Analytics() {
                         Crowd, density, motion and
                         risk analytics
                     </p>
+                </div>
+
+                <div>
+                    <label
+                        style={{
+                            marginRight: "0.5rem",
+                            color:
+                                "var(--text-secondary)",
+                        }}
+                    >
+                        Camera:
+                    </label>
+
+                    <select
+                        value={selectedCamera}
+                        onChange={(e) =>
+                            setSelectedCamera(
+                                e.target.value
+                            )
+                        }
+                    >
+                        <option value="">
+                            All Cameras
+                        </option>
+
+                        {cameras.map((camera) => (
+                            <option
+                                key={
+                                    camera.camera_id
+                                }
+                                value={
+                                    camera.camera_id
+                                }
+                            >
+                                {camera.camera_id}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
