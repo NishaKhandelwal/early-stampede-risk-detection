@@ -28,34 +28,24 @@ class DetectionService:
         self.PERSON_CLASS = 0
 
         self.confidence_threshold = confidence_threshold
-
-  
-
     def detect_people(self, frame):
 
         """
-        Detect persons in a frame.
+        Detect persons in the ORIGINAL frame.
 
-        Parameters
-        ----------
-        frame : ndarray
-
-        Returns
-        -------
-        dict
-
-        {
-            people_count,
-            detections,
-            inference_time,
-            frame_width,
-            frame_height
-        }
+        Ultralytics handles the required preprocessing internally,
+        while returned bounding boxes remain aligned with the
+        original frame coordinate system.
         """
 
         start_time = time.time()
-        frame = cv2.resize(frame, (640, 640))
-        results = self.model(frame, verbose=False)
+
+        original_height, original_width = frame.shape[:2]
+
+        results = self.model(
+            frame,
+            verbose=False
+        )
 
         detections = []
 
@@ -64,7 +54,6 @@ class DetectionService:
             for box in result.boxes:
 
                 class_id = int(box.cls[0])
-
                 confidence = float(box.conf[0])
 
                 # Ignore non-person classes
@@ -75,32 +64,25 @@ class DetectionService:
                 if confidence < self.confidence_threshold:
                     continue
 
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                x1, y1, x2, y2 = map(
+                    int,
+                    box.xyxy[0]
+                )
 
                 detections.append({
-
                     "bbox": [x1, y1, x2, y2],
-
                     "confidence": round(confidence, 2)
-
                 })
 
-        inference_time = round(time.time() - start_time, 3)
+        inference_time = round(
+            time.time() - start_time,
+            3
+        )
 
-        height, width = frame.shape[:2]
-
-        output = {
-
+        return {
             "people_count": len(detections),
-
             "detections": detections,
-
-            "frame_width": width,
-
-            "frame_height": height,
-
+            "frame_width": original_width,
+            "frame_height": original_height,
             "inference_time": inference_time
-
         }
-
-        return output
