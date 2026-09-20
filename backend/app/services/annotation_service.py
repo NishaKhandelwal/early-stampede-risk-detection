@@ -143,7 +143,7 @@ class AnnotationService:
 
         cv2.putText(
             annotated,
-            f"Density Score : {density_score:.6f}",
+            f"Density Score : {density_score:.1f} ppl/MP",
             (20, 140),
             self.font,
             0.5,

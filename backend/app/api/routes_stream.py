@@ -89,7 +89,13 @@ def stream_register():
         return jsonify({
             "error": "process_every_n must be a positive integer"
         }), 400
-
+    if source_type == "webcam":
+        try:
+            source_url = int(source_url)
+        except (TypeError, ValueError):
+            return jsonify({
+                "error": "Webcam source must be a device index, e.g. 0"
+            }), 400
     success, message, camera = register_camera(
         camera_id=camera_id,
         source_url=source_url,

@@ -1,5 +1,6 @@
 import React from "react";
 import { useAlertContext } from "../context/AlertContext";
+import { getRiskColor } from "../services/risk";
 import { Maximize2, Play, Square, Trash2 } from "lucide-react";
 import LiveFeedViewer from "./LiveFeedViewer";
 
@@ -174,12 +175,7 @@ export default function CameraCard({
 
                     <strong
                         style={{
-                            color:
-                                riskLevel === "HIGH"
-                                    ? "#ef4444"
-                                    : riskLevel === "WARNING"
-                                    ? "#f59e0b"
-                                    : "#22c55e",
+                            color: riskLevel === "--" ? "#718096" : getRiskColor(riskLevel),
                             fontSize: "1.1rem",
                         }}
                     >
