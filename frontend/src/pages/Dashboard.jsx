@@ -122,6 +122,7 @@ export default function Dashboard() {
       : null;
 
   const audioCtxRef = useRef(null);
+  const lastSeenAlertId = useRef(alerts?.[0]?.id ?? null);
   useEffect(() => {
     let mounted = true;
 
@@ -188,6 +189,17 @@ export default function Dashboard() {
     if (!latestAlert) {
       return;
     }
+
+    // Skip the alert that was already there when this page opened
+    // (or that was already shown), so it doesn't pop up again.
+    if (
+      latestAlert.id != null &&
+      latestAlert.id === lastSeenAlertId.current
+    ) {
+      return;
+    }
+
+    lastSeenAlertId.current = latestAlert.id ?? null;
 
     setActiveAlert(latestAlert);
     setShowAlert(true);
