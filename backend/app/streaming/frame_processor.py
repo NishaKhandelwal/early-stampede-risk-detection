@@ -15,9 +15,11 @@ so API routes can start/stop them by camera_id.
 
 import threading
 import time
+from collections import deque
 
 from app.streaming.rtsp_handler import RTSPCamera
 from app.utils.helpers import run_pipeline_on_frame, reset_motion_service
+from app.utils.dashboard_payload import create_dashboard_payload
 from app.database.db import save_alert, save_analytics_snapshot
 from app.core.constants import ALERTABLE_RISK_LEVELS
 from app.utils.logger import get_logger
@@ -118,6 +120,13 @@ class FrameProcessor(threading.Thread):
         self.stop_flag = threading.Event()
         self.camera = RTSPCamera(source_url, camera_id=camera_id)
 
+        # Rolling history of the last 30 processed frames (for dashboard graphs).
+        self.history = {
+            "people": deque(maxlen=30),
+            "density": deque(maxlen=30),
+            "motion": deque(maxlen=30),
+        }
+
     def run(self):
         reset_motion_service(self.camera_id)
 
@@ -147,9 +156,7 @@ class FrameProcessor(threading.Thread):
                             f"[{self.camera_id}] Video processing completed"
                         )
 
-                        emit_processing_complete({
-                            "camera_id": self.camera_id
-                        })
+                        emit_processing_complete(self.camera_id)
 
                         break
 
@@ -201,16 +208,16 @@ class FrameProcessor(threading.Thread):
                     risk_level=result["risk_level"],
                 )
 
-                emit_dashboard_update({
-                    "camera_id": self.camera_id,
-                    "people_count": result["people_count"],
-                    "density_score": result["density_score"],
-                    "density_level": result["density_level"],
-                    "motion_score": result["motion_score"],
-                    "motion_level": result["motion_level"],
-                    "risk_level": result["risk_level"],
-                    "timestamp": result.get("timestamp"),
-                })
+                self.history["people"].append(result["people_count"])
+                self.history["density"].append(result["density_score"])
+                self.history["motion"].append(result["motion_score"] or 0)
+
+                emit_dashboard_update(
+                    create_dashboard_payload(
+                        result,
+                        history={k: list(v) for k, v in self.history.items()},
+                    )
+                )
 
                 # --------------------------------------------------
                 # Alerts

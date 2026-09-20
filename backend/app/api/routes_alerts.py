@@ -117,3 +117,55 @@ def acknowledge_all():
         "message": "All alerts acknowledged",
         "count": count,
     }), 200
+@alerts_bp.route("/test-alert", methods=["POST"])
+def test_alert():
+    from app.database.db import save_alert
+    from app.services.websocket_service import emit_new_alert
+
+    risk_level = request.args.get("risk_level", "HIGH RISK").strip().upper()
+
+    if risk_level not in {"WARNING", "HIGH RISK"}:
+        return jsonify({
+            "success": False,
+            "error": "risk_level must be WARNING or HIGH RISK"
+        }), 400
+
+    if risk_level == "WARNING":
+        alert = {
+            "camera_id": "CAM-TEST",
+            "risk_level": "WARNING",
+            "message": "Crowd conditions require attention. Monitor the situation closely.",
+            "people_count": 15,
+            "density_level": "MEDIUM",
+            "motion_level": "HIGH",
+            "acknowledged": 0
+        }
+
+    else:
+        alert = {
+            "camera_id": "CAM-TEST",
+            "risk_level": "HIGH RISK",
+            "message": "High crowd risk detected. Immediate attention required.",
+            "people_count": 27,
+            "density_level": "HIGH",
+            "motion_level": "HIGH",
+            "acknowledged": 0
+        }
+
+    alert_id = save_alert(
+        camera_id=alert["camera_id"],
+        risk_level=alert["risk_level"],
+        message=alert["message"],
+        people_count=alert["people_count"],
+        density_level=alert["density_level"],
+        motion_level=alert["motion_level"]
+    )
+
+    alert["id"] = alert_id
+
+    emit_new_alert(alert)
+
+    return jsonify({
+        "success": True,
+        "alert": alert
+    }), 200

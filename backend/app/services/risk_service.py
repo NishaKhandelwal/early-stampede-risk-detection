@@ -66,7 +66,7 @@ class RiskService:
         }
 
     def assess_from_scores(self, density_score, motion_score,
-                            density_thresholds=(0.3, 0.7),
+                            density_thresholds=(10.0, 25.0),
                             motion_thresholds=(1.5, 4.0)):
         """
         Optional helper: classify raw numeric scores into LOW/MEDIUM/HIGH

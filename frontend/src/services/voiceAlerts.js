@@ -1,3 +1,4 @@
+import { normalizeRisk } from "../services/risk";
 let lastAnnouncement = null;
 let lastAnnouncementTime = 0;
 
@@ -97,9 +98,7 @@ export const announceAlert = (alert) => {
         return;
     }
 
-    const risk = String(
-        alert.risk_level || ""
-    ).toUpperCase();
+    const risk = normalizeRisk(alert.risk_level);
 
     if (
         risk !== "WARNING" &&

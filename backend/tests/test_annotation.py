@@ -12,17 +12,17 @@ frame = cv2.imread("datasets/sample_images/stamp.jpg")
 
 result = detector.detect_people(frame)
 
-density_score, density_level = density.calculate_density(
-    result["people_count"],
-    frame
+density_result = density.calculate_density(
+    result["detections"],
+    frame.shape
 )
 
 output = annotator.annotate_frame(
     frame,
     result["detections"],
     result["people_count"],
-    density_level,
-    density_score,
+    density_result["density_level"],
+    density_result["density_score"],
     fps=30
 )
 

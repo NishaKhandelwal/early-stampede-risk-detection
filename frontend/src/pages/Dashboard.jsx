@@ -4,6 +4,12 @@ import "./Dashboard.css";
 import { useAlertContext } from "../context/AlertContext";
 import { getCameras } from "../services/cameraService";
 import { acknowledgeAlert } from "../services/api";
+import {
+    getRiskColor,
+    getRiskEmoji,
+    getRiskLabel,
+    getRiskRecommendation
+} from "../services/risk";
 export default function Dashboard() {
   const { dashboardData, liveFrames, alerts } = useAlertContext();
   const [cameras, setCameras] = useState([]);
@@ -71,39 +77,7 @@ export default function Dashboard() {
     mainCameraData?.people_count ??
     displayAnalysis?.max_people_count ??
     0;
-  const getRiskRecommendation = (risk) => {
-    switch (String(risk).toUpperCase()) {
-      case "WARNING":
-      case "MEDIUM":
-        return "Monitor the area and control crowd flow if required.";
 
-      case "HIGH":
-        return "Immediate attention required. Monitor the area and manage crowd movement.";
-
-      case "CRITICAL":
-      case "EXTREME":
-        return "Critical crowd condition detected. Initiate appropriate emergency response procedures.";
-
-      default:
-        return "Crowd conditions are currently stable.";
-    }
-  };
-
-  const getRiskColor = (risk) => {
-    switch (String(risk).toUpperCase()) {
-      case "CRITICAL":
-      case "EXTREME":
-      case "HIGH":
-        return "#ef4444";
-
-      case "WARNING":
-      case "MEDIUM":
-        return "#f59e0b";
-
-      default:
-        return "#22c55e";
-    }
-  };
 
   const currentRiskColor = getRiskColor(currentRisk);
   const riskRecommendation = getRiskRecommendation(currentRisk);
@@ -1075,43 +1049,19 @@ export default function Dashboard() {
               <span style={{ color: '#4a5568', letterSpacing: '1px', fontSize: '0.7rem' }}>RULE-BASED</span>
             </div>
             <h2
-            style={{
-            color:
-            displayAnalysis?.final_risk_level==="HIGH"
-            ?"#ef4444"
-            :displayAnalysis?.final_risk_level==="WARNING"
-            ?"#f59e0b"
-            :"#22c55e",
-
-            fontSize:"2rem",
-
-            fontWeight:"700",
-
-            display:"flex",
-
-            alignItems:"center",
-
-            gap:"0.5rem"
-
-            }}
+                style={{
+                    color: getRiskColor(displayAnalysis?.final_risk_level),
+                    fontSize: "2rem",
+                    fontWeight: "700",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                }}
             >
-
-            {
-
-            displayAnalysis?.final_risk_level==="HIGH"
-
-            ?"🔴"
-
-            :displayAnalysis?.final_risk_level==="WARNING"
-
-            ?"🟡"
-
-            :"🟢"
-
-            }
-
-            {displayAnalysis?.final_risk_level??"--"}
-
+                {getRiskEmoji(displayAnalysis?.final_risk_level)}
+                {displayAnalysis?.final_risk_level
+                    ? getRiskLabel(displayAnalysis.final_risk_level)
+                    : "--"}
             </h2>
             <p style={{ color: "#718096", margin: 0, fontSize: "0.85rem", lineHeight: "1.6" }}>
               {displayAnalysis?.risk_message || "Waiting for live AI analysis."}
@@ -1252,25 +1202,20 @@ export default function Dashboard() {
                   fontSize: "0.8rem",
                 }}
               >
-                {displayAnalysis?.risk_events?.length ?? 0}
+                {alerts.length}
               </span>
             </div>
 
-            {displayAnalysis?.risk_events?.length > 0 ? (
+            {alerts.length > 0 ? (
 
-              displayAnalysis.risk_events.map((event, index) => {
+              alerts.slice(0, 5).map((event, index) => {
 
-                const badgeColor =
-                  event.risk_level === "HIGH"
-                    ? "#ef4444"
-                    : event.risk_level === "WARNING"
-                    ? "#f59e0b"
-                    : "#22c55e";
+                const badgeColor = getRiskColor(event.risk_level);
 
                 return (
 
                   <div
-                    key={index}
+                    key={event.id ?? index}
                     style={{
                       backgroundColor: "#11161b",
                       border: "1px solid #1f2937",
@@ -1309,7 +1254,7 @@ export default function Dashboard() {
                           fontSize: "0.8rem",
                         }}
                       >
-                        Frame #{event.frame}
+                        {event.camera_id}
                       </span>
 
                     </div>
@@ -1498,16 +1443,11 @@ export default function Dashboard() {
 
                   <span
                     style={{
-                      color:
-                        risk === "HIGH"
-                          ? "#ef4444"
-                          : risk === "WARNING"
-                          ? "#f59e0b"
-                          : "#22c55e",
+                      color: getRiskColor(risk),
                       fontWeight: "700",
                     }}
                   >
-                    {risk}
+                    {getRiskLabel(risk)}
                   </span>
 
                 </button>
