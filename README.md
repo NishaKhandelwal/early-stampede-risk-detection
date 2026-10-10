@@ -293,7 +293,6 @@ Manual test scripts are in `backend/tests/` (for example `test_detection.py` and
 
 ## ⚠ Limitations
 
-- No quantitative validation against ground-truth counts or labelled risk events
 - Density is measured in image space, so camera angle and perspective affect it
 - Thresholds are manual and need calibration for each camera view
 - The motion score is a global average; it cannot separate crowd movement from vehicles or camera shake, and it depends on the frame-sampling interval
@@ -301,11 +300,6 @@ Manual test scripts are in `backend/tests/` (for example `test_detection.py` and
 - A dense but stationary crowd (HIGH density, LOW motion) is classified NORMAL
 - Risk is evaluated per frame with no temporal smoothing
 - The camera registry is in memory and resets when the backend restarts
-- No authentication, and CORS is open (prototype only)
-- Webcam capture uses `CAP_DSHOW`, which is Windows-specific
-- Alert cooldown applies to registered camera streams, not to uploaded-video processing
-- Concurrent inference across many cameras has not been load-tested
-- `heatmap_service.py` exists but is not yet part of the pipeline
 
 ---
 
